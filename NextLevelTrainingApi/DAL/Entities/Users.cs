@@ -16,6 +16,8 @@ namespace NextLevelTrainingApi.DAL.Entities
         public Users()
         {
             this.Posts = new List<Post>();
+            this.Teams = new List<Team>();
+            this.UpcomingMatches = new List<UpcomingMatch>();
         }
         [BsonId]
 

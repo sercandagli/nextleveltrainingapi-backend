@@ -191,7 +191,7 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return NotFound();
             }
-            if (teamVM.TeamID == null && teamVM.TeamID == Guid.Empty)
+            if (teamVM.TeamID == null || teamVM.TeamID == Guid.Empty)
             {
                 team = new Team()
                 {
@@ -251,7 +251,7 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return NotFound();
             }
-            if (upcomingMatchVM.UpcomingMatchID == null && upcomingMatchVM.UpcomingMatchID == Guid.Empty)
+            if (upcomingMatchVM.UpcomingMatchID == null || upcomingMatchVM.UpcomingMatchID == Guid.Empty)
             {
                 upcomingMatch = new UpcomingMatch()
                 {
