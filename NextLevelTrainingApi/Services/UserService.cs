@@ -4,19 +4,20 @@ using System.Linq;
 using System.Threading.Tasks;
 using NextLevelTrainingApi.Models;
 using MongoDB.Driver;
+using NextLevelTrainingApi.Services.Interfaces;
+using NextLevelTrainingApi.DAL.Interfaces;
 
 namespace NextLevelTrainingApi.Services
 {
-    public class UserService
+    public class UserService: IUserService
     {
-        private readonly IMongoCollection<Users> users;
 
-        public UserService(INextLevelDBSettings settings)
+        private IUnitOfWork _unitOfWork;
+        public UserService(IUnitOfWork unitOfWork)
         {
-            var client = new MongoClient(settings.ConnectionString);
-            var database = client.GetDatabase(settings.DatabaseName);
-            users = database.GetCollection<Users>(settings.UsersCollectionName); 
+            _unitOfWork = unitOfWork;
         }
+
 
         public List<Users> Get()
         { return users.Find(user => true).ToList(); }

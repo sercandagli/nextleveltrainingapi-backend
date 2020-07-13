@@ -5,21 +5,20 @@ using System.Threading.Tasks;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json;
+using NextLevelTrainingApi.DAL.Interfaces;
+using NextLevelTrainingApi.Helper;
 
-namespace NextLevelTrainingApi.Models
+namespace NextLevelTrainingApi.DAL.Entities
 {
-    public class Users
+    [BsonCollection("Users")]
+    public class Users: IDocument
     {
         [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
+        
+        public Guid Id { get; set; }
 
-        [BsonElement("Name")]
-        [JsonProperty("Name")]
         public string FullName { get; set; }
 
-        [BsonElement("Adress")]
-        [JsonProperty("Adress")]
         public string Address { get; set; }
 
         public string EmailID { get; set; }

@@ -12,7 +12,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NextLevelTrainingApi.Models;
 using Microsoft.Extensions.Options;
-using NextLevelTrainingApi.Services;
+using NextLevelTrainingApi.DAL.Interfaces;
+using NextLevelTrainingApi.DAL.Repository;
 
 namespace NextLevelTrainingApi
 {
@@ -35,7 +36,7 @@ namespace NextLevelTrainingApi
             services.AddSingleton<INextLevelDBSettings>(sp =>
                 sp.GetRequiredService<IOptions<NextLevelDBSettings>>().Value);
 
-            services.AddSingleton<UserService>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddControllers().AddNewtonsoftJson(options => options.UseMemberCasing());;
         }

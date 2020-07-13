@@ -4,8 +4,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using NextLevelTrainingApi.Services;
 using NextLevelTrainingApi.Models;
+using NextLevelTrainingApi.DAL.Entities;
+using NextLevelTrainingApi.DAL.Repository;
+using NextLevelTrainingApi.DAL.Interfaces;
+using NextLevelTrainingApi.ViewModels;
+using NextLevelTrainingApi.Helper;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -13,20 +17,17 @@ namespace NextLevelTrainingApi.Controllers
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private UserService userService;
-
-        public UsersController(UserService _userService)
+        private IUnitOfWork _unitOfWork;
+        public UsersController(IUnitOfWork unitOfWork)
         {
-            userService = _userService;
+            _unitOfWork = unitOfWork;
         }
 
         [HttpGet]
-        public ActionResult<List<Users>> Get() =>
-            userService.Get();
-        [HttpGet("{id:length(24)}", Name = "GetUser")]
-        public ActionResult<Users> Get(string id)
+        [Route("GetUser/{id}")]
+        public ActionResult<Users> GetUser(Guid id)
         {
-            var user = userService.Get(id);
+            var user = _unitOfWork.UserRepository.FindById(id);
 
             if (user == null)
             {
@@ -37,41 +38,42 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpPost]
-        public ActionResult<Users> Create(Users user)
+        [Route("Register")]
+        public ActionResult<Users> Register(UserViewModel userVM)
         {
-            userService.Create(user);
 
-            return CreatedAtRoute("GetUser", new { id = user.Id.ToString() }, user);
+            Users user = new Users()
+            {
+                Id = Guid.NewGuid(),
+                Address = userVM.Address,
+                EmailID = userVM.EmailID,
+                FullName = userVM.FullName,
+                MobileNo = userVM.MobileNo,
+                Role = userVM.Role,
+                Password = userVM.Password.Encrypt()
+            };
+
+            _unitOfWork.UserRepository.InsertOne(user);
+
+            return user;
         }
 
-        [HttpPut("{id:length(24)}")]
-        public IActionResult Update(string id, Users bookIn)
+        [HttpPost]
+        [Route("Login")]
+        public ActionResult<Users> Login(UserViewModel userVM)
         {
-            var book = userService.Get(id);
 
-            if (book == null)
+            var user = _unitOfWork.UserRepository.FindOne(x => x.EmailID.ToLower() == userVM.EmailID.ToLower() && x.Password == userVM.Password.Encrypt());
+
+            if (user == null)
             {
                 return NotFound();
             }
 
-            userService.Update(id, bookIn);
+            return user;
 
-            return NoContent();
         }
 
-        [HttpDelete("{id:length(24)}")]
-        public IActionResult Delete(string id)
-        {
-            var book = userService.Get(id);
 
-            if (book == null)
-            {
-                return NotFound();
-            }
-
-            userService.Remove(book.Id);
-
-            return NoContent();
-        }
     }
 }
