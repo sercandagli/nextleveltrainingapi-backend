@@ -8,8 +8,6 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class PostViewModel
     {
-        [Required]
-        public Guid UserID { get; set; }
 
         [Required]
         public string Header { get; set; }

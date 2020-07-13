@@ -8,8 +8,7 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class RateViewModel
     {
-        [Required]
-        public Guid UserID { get; set; }
+      
         public int Rate { get; set; }
     }
 }

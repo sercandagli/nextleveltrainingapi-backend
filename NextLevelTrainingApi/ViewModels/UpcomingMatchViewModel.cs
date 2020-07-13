@@ -9,8 +9,6 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class UpcomingMatchViewModel
     {
-        [Required]
-        public Guid UserID { get; set; }
         public Guid? UpcomingMatchID { get; set; }
 
         [Required]

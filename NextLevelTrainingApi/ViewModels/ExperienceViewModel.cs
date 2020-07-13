@@ -8,8 +8,7 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class ExperienceViewModel
     {
-        [Required]
-        public Guid UserID { get; set; }
+        
         public Guid? ExperienceId { get; set; }
         [Required]
         public string JobPosition { get; set; }

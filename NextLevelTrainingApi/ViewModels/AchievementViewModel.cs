@@ -8,8 +8,7 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class AchievementViewModel
     {
-        [Required]
-        public Guid UserID { get; set; }
+       
         public string Achievements { get; set; }
     }
 }

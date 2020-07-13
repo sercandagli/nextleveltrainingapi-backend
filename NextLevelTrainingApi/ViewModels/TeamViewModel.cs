@@ -8,8 +8,7 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class TeamViewModel
     {
-        [Required]
-        public Guid UserID { get; set; }
+        
         public Guid? TeamID { get; set; }
 
         [Required]

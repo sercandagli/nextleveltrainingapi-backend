@@ -8,8 +8,7 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class TrainingLocationViewModel
     {
-        [Required]
-        public Guid UserId { get; set; }
+        
         public Guid? TrainingLocationId { get; set; }
         [Required]
         public string LocationName { get; set; }

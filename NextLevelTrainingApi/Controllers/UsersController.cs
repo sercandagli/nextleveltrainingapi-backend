@@ -10,24 +10,33 @@ using NextLevelTrainingApi.DAL.Repository;
 using NextLevelTrainingApi.DAL.Interfaces;
 using NextLevelTrainingApi.ViewModels;
 using NextLevelTrainingApi.Helper;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authorization;
+using NextLevelTrainingApi.AuthDetails;
 
 namespace NextLevelTrainingApi.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
     public class UsersController : ControllerBase
     {
         private IUnitOfWork _unitOfWork;
-        public UsersController(IUnitOfWork unitOfWork)
+        private IUserContext _userContext;
+        public UsersController(IUnitOfWork unitOfWork, IUserContext userContext)
         {
             _unitOfWork = unitOfWork;
+            _userContext = userContext;
         }
 
         [HttpGet]
-        [Route("GetUser/{id}")]
-        public ActionResult<Users> GetUser(Guid id)
+        [Route("GetUser")]
+        public ActionResult<Users> GetUser()
         {
-            var user = _unitOfWork.UserRepository.FindById(id);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -37,43 +46,7 @@ namespace NextLevelTrainingApi.Controllers
             return user;
         }
 
-        [HttpPost]
-        [Route("Register")]
-        public ActionResult<Users> Register(UserViewModel userVM)
-        {
-
-            Users user = new Users()
-            {
-                Id = Guid.NewGuid(),
-                Address = userVM.Address,
-                EmailID = userVM.EmailID,
-                FullName = userVM.FullName,
-                MobileNo = userVM.MobileNo,
-                Role = userVM.Role,
-                Password = userVM.Password.Encrypt()
-            };
-
-            _unitOfWork.UserRepository.InsertOne(user);
-
-            return user;
-        }
-
-        [HttpPost]
-        [Route("Login")]
-        public ActionResult<Users> Login(UserViewModel userVM)
-        {
-
-            var user = _unitOfWork.UserRepository.FindOne(x => x.EmailID.ToLower() == userVM.EmailID.ToLower() && x.Password == userVM.Password.Encrypt());
-
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            return user;
-
-        }
-
+        
         [HttpPost]
         [Route("CreatePost")]
         public ActionResult<Post> CreatePost(PostViewModel postVM)
@@ -87,7 +60,7 @@ namespace NextLevelTrainingApi.Controllers
                 MediaURL = postVM.MediaURL,
                 NumberOfLikes = postVM.NumberOfLikes
             };
-            var user = _unitOfWork.UserRepository.FindById(postVM.UserID);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -100,11 +73,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetPostsByUser/{id}")]
-        public ActionResult<List<Post>> GetPostsByUser(Guid id)
+        [Route("GetPostsByUser")]
+        public ActionResult<List<Post>> GetPostsByUser()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(id);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -120,7 +93,7 @@ namespace NextLevelTrainingApi.Controllers
         [Route("ChangeAboutUs")]
         public ActionResult<string> ChangeAboutUs(AboutViewModel aboutUsVM)
         {
-            var user = _unitOfWork.UserRepository.FindById(aboutUsVM.UserID);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -133,11 +106,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetAboutUs/{userId}")]
-        public ActionResult<string> GetAboutUs(Guid userId)
+        [Route("GetAboutUs")]
+        public ActionResult<string> GetAboutUs()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -152,7 +125,7 @@ namespace NextLevelTrainingApi.Controllers
         [Route("ChangeAchievement")]
         public ActionResult<string> ChangeAchievement(AchievementViewModel achievementVM)
         {
-            var user = _unitOfWork.UserRepository.FindById(achievementVM.UserID);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -165,11 +138,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetAchievement/{userId}")]
-        public ActionResult<string> GetAchievement(Guid userId)
+        [Route("GetAchievement")]
+        public ActionResult<string> GetAchievement()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -186,7 +159,7 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<Team> SaveTeam(TeamViewModel teamVM)
         {
             var team = new Team();
-            var user = _unitOfWork.UserRepository.FindById(teamVM.UserID);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -226,11 +199,11 @@ namespace NextLevelTrainingApi.Controllers
 
 
         [HttpGet]
-        [Route("GetTeams/{userId}")]
-        public ActionResult<List<Team>> GetTeams(Guid userId)
+        [Route("GetTeams")]
+        public ActionResult<List<Team>> GetTeams()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -246,7 +219,7 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<UpcomingMatch> SaveUpcomingMatch(UpcomingMatchViewModel upcomingMatchVM)
         {
             var upcomingMatch = new UpcomingMatch();
-            var user = _unitOfWork.UserRepository.FindById(upcomingMatchVM.UserID);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -280,11 +253,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetUpcomingMatches/{userId}")]
-        public ActionResult<List<UpcomingMatch>> GetUpcomingMatches(Guid userId)
+        [Route("GetUpcomingMatches")]
+        public ActionResult<List<UpcomingMatch>> GetUpcomingMatches()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -300,7 +273,7 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<Experience> SaveExperience(ExperienceViewModel experienceVM)
         {
             var experience = new Experience();
-            var user = _unitOfWork.UserRepository.FindById(experienceVM.UserID);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -338,11 +311,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetExperiences/{userId}")]
-        public ActionResult<List<Experience>> GetExperiences(Guid userId)
+        [Route("GetExperiences")]
+        public ActionResult<List<Experience>> GetExperiences()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -357,7 +330,7 @@ namespace NextLevelTrainingApi.Controllers
         [Route("SaveDBSCeritificate")]
         public ActionResult<DocumentDetail> SaveDBSCeritificate(DocumentDetailViewModel documentDetailVM)
         {
-            var user = _unitOfWork.UserRepository.FindById(documentDetailVM.UserId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -383,11 +356,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetDBSCeritificate/{userId}")]
-        public ActionResult<DocumentDetail> GetDBSCeritificate(Guid userId)
+        [Route("GetDBSCeritificate")]
+        public ActionResult<DocumentDetail> GetDBSCeritificate()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -402,7 +375,7 @@ namespace NextLevelTrainingApi.Controllers
         [Route("SaveVerificationId")]
         public ActionResult<DocumentDetail> SaveVerificationId(DocumentDetailViewModel documentDetailVM)
         {
-            var user = _unitOfWork.UserRepository.FindById(documentDetailVM.UserId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -428,11 +401,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetVerificationDocument/{userId}")]
-        public ActionResult<DocumentDetail> GetVerificationDocument(Guid userId)
+        [Route("GetVerificationDocument")]
+        public ActionResult<DocumentDetail> GetVerificationDocument()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -447,7 +420,7 @@ namespace NextLevelTrainingApi.Controllers
         [Route("ChangeRate")]
         public ActionResult<int> ChangeRate(RateViewModel priceVM)
         {
-            var user = _unitOfWork.UserRepository.FindById(priceVM.UserID);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -460,11 +433,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetRate/{userId}")]
-        public ActionResult<int> GetRate(Guid userId)
+        [Route("GetRate")]
+        public ActionResult<int> GetRate()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
@@ -480,7 +453,7 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<TrainingLocation> SaveTrainingLocation(TrainingLocationViewModel trainingLocationVM)
         {
             var trainingLocation = new TrainingLocation();
-            var user = _unitOfWork.UserRepository.FindById(trainingLocationVM.UserId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -515,11 +488,11 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetTrainingLocations/{userId}")]
-        public ActionResult<List<TrainingLocation>> GetTrainingLocations(Guid userId)
+        [Route("GetTrainingLocations")]
+        public ActionResult<List<TrainingLocation>> GetTrainingLocations()
         {
 
-            var user = _unitOfWork.UserRepository.FindById(userId);
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
             if (user == null)
             {
