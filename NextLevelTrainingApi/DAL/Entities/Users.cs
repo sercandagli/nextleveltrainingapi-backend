@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json;
@@ -36,6 +37,11 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string Role { get; set; }
         public string Achievements { get; set; }
         public string AboutUs { get; set; }
+        public int Rate { get; set; }
+        public List<Experience> Experiences { get; set; }
+        public DocumentDetail DBSCeritificate { get; set; }
+        public DocumentDetail VerificationDocument { get; set; }
+        public List<TrainingLocation> TrainingLocations { get; set; }
         public List<Post> Posts { get; set; }
         public List<Team> Teams { get; set; }
         public List<UpcomingMatch> UpcomingMatches { get; set; }

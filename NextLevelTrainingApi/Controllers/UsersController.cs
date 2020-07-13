@@ -93,7 +93,7 @@ namespace NextLevelTrainingApi.Controllers
                 return NotFound();
             }
             user.Posts.Add(post);
-            _unitOfWork.UserRepository.ReplaceOne(user);          
+            _unitOfWork.UserRepository.ReplaceOne(user);
 
             return post;
 
@@ -103,7 +103,7 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetPostsByUser/{id}")]
         public ActionResult<List<Post>> GetPostsByUser(Guid id)
         {
-            
+
             var user = _unitOfWork.UserRepository.FindById(id);
 
             if (user == null)
@@ -115,7 +115,7 @@ namespace NextLevelTrainingApi.Controllers
 
         }
 
-     
+
         [HttpPost]
         [Route("ChangeAboutUs")]
         public ActionResult<string> ChangeAboutUs(AboutViewModel aboutUsVM)
@@ -127,7 +127,7 @@ namespace NextLevelTrainingApi.Controllers
             }
 
             user.AboutUs = aboutUsVM.AboutUs;
-            _unitOfWork.UserRepository.ReplaceOne(user); 
+            _unitOfWork.UserRepository.ReplaceOne(user);
             return aboutUsVM.AboutUs;
 
         }
@@ -185,8 +185,8 @@ namespace NextLevelTrainingApi.Controllers
         [Route("SaveTeam")]
         public ActionResult<Team> SaveTeam(TeamViewModel teamVM)
         {
-           var team = new Team();
-           var user = _unitOfWork.UserRepository.FindById(teamVM.UserID);
+            var team = new Team();
+            var user = _unitOfWork.UserRepository.FindById(teamVM.UserID);
             if (user == null)
             {
                 return NotFound();
@@ -199,15 +199,15 @@ namespace NextLevelTrainingApi.Controllers
                     TeamName = teamVM.TeamName,
                     TeamImage = teamVM.TeamImage,
                     StartDate = teamVM.StartDate,
-                    EndDate = teamVM.EndDate,
+                    EndDate = teamVM.EndDate
                 };
                 user.Teams.Add(team);
-               
+
             }
             else
             {
                 team = user.Teams.Find(x => x.Id == teamVM.TeamID);
-                if(team == null)
+                if (team == null)
                 {
                     return NotFound();
                 }
@@ -257,7 +257,7 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     Id = Guid.NewGuid(),
                     TeamName = upcomingMatchVM.TeamName,
-                    MatchDate = upcomingMatchVM.MatchDate,
+                    MatchDate = upcomingMatchVM.MatchDate
                 };
                 user.UpcomingMatches.Add(upcomingMatch);
             }
@@ -272,7 +272,7 @@ namespace NextLevelTrainingApi.Controllers
                 upcomingMatch.TeamName = upcomingMatchVM.TeamName;
                 upcomingMatch.MatchDate = upcomingMatchVM.MatchDate;
             }
-           
+
             _unitOfWork.UserRepository.ReplaceOne(user);
 
             return upcomingMatch;
@@ -292,6 +292,241 @@ namespace NextLevelTrainingApi.Controllers
             }
 
             return user.UpcomingMatches;
+
+        }
+
+        [HttpPost]
+        [Route("SaveExperience")]
+        public ActionResult<Experience> SaveExperience(ExperienceViewModel experienceVM)
+        {
+            var experience = new Experience();
+            var user = _unitOfWork.UserRepository.FindById(experienceVM.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            if (experienceVM.ExperienceId == null || experienceVM.ExperienceId == Guid.Empty)
+            {
+                experience = new Experience()
+                {
+                    Id = Guid.NewGuid(),
+                    JobPosition = experienceVM.JobPosition,
+                    Club = experienceVM.Club,
+                    StartDate = experienceVM.StartDate,
+                    EndDate = experienceVM.CurrentlyWorking ? DateTime.Now : experienceVM.EndDate
+                };
+                user.Experiences.Add(experience);
+            }
+            else
+            {
+                experience = user.Experiences.Find(x => x.Id == experienceVM.ExperienceId);
+                if (experience == null)
+                {
+                    return NotFound();
+                }
+
+                experience.JobPosition = experienceVM.JobPosition;
+                experience.Club = experienceVM.Club;
+                experience.StartDate = experienceVM.StartDate;
+                experience.EndDate = experienceVM.CurrentlyWorking ? DateTime.Now : experienceVM.EndDate;
+            }
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return experience;
+
+        }
+
+        [HttpGet]
+        [Route("GetExperiences/{userId}")]
+        public ActionResult<List<Experience>> GetExperiences(Guid userId)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(userId);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.Experiences;
+
+        }
+
+        [HttpPost]
+        [Route("SaveDBSCeritificate")]
+        public ActionResult<DocumentDetail> SaveDBSCeritificate(DocumentDetailViewModel documentDetailVM)
+        {
+            var user = _unitOfWork.UserRepository.FindById(documentDetailVM.UserId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            if (user.DBSCeritificate == null)
+            {
+                user.DBSCeritificate = new DocumentDetail();
+                user.DBSCeritificate.Path = documentDetailVM.Path;
+                user.DBSCeritificate.Type = documentDetailVM.Type;
+                user.DBSCeritificate.Verified = documentDetailVM.Verified;
+            }
+            else
+            {
+                user.DBSCeritificate.Path = documentDetailVM.Path;
+                user.DBSCeritificate.Type = documentDetailVM.Type;
+                user.DBSCeritificate.Verified = documentDetailVM.Verified;
+            }
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return user.DBSCeritificate;
+
+        }
+
+        [HttpGet]
+        [Route("GetDBSCeritificate/{userId}")]
+        public ActionResult<DocumentDetail> GetDBSCeritificate(Guid userId)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(userId);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.DBSCeritificate;
+
+        }
+
+        [HttpPost]
+        [Route("SaveVerificationId")]
+        public ActionResult<DocumentDetail> SaveVerificationId(DocumentDetailViewModel documentDetailVM)
+        {
+            var user = _unitOfWork.UserRepository.FindById(documentDetailVM.UserId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            if (user.VerificationDocument == null)
+            {
+                user.VerificationDocument = new DocumentDetail();
+                user.VerificationDocument.Path = documentDetailVM.Path;
+                user.VerificationDocument.Type = documentDetailVM.Type;
+                user.VerificationDocument.Verified = documentDetailVM.Verified;
+            }
+            else
+            {                
+                user.VerificationDocument.Path = documentDetailVM.Path;
+                user.VerificationDocument.Type = documentDetailVM.Type;
+                user.VerificationDocument.Verified = documentDetailVM.Verified;
+            }
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return user.VerificationDocument;
+
+        }
+
+        [HttpGet]
+        [Route("GetVerificationDocument/{userId}")]
+        public ActionResult<DocumentDetail> GetVerificationDocument(Guid userId)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(userId);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.VerificationDocument;
+
+        }
+
+        [HttpPost]
+        [Route("ChangeRate")]
+        public ActionResult<int> ChangeRate(RateViewModel priceVM)
+        {
+            var user = _unitOfWork.UserRepository.FindById(priceVM.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            user.Rate = priceVM.Rate;
+            _unitOfWork.UserRepository.ReplaceOne(user);
+            return priceVM.Rate;
+
+        }
+
+        [HttpGet]
+        [Route("GetRate/{userId}")]
+        public ActionResult<int> GetRate(Guid userId)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(userId);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.Rate;
+
+        }
+
+        [HttpPost]
+        [Route("SaveTrainingLocation")]
+        public ActionResult<TrainingLocation> SaveTrainingLocation(TrainingLocationViewModel trainingLocationVM)
+        {
+            var trainingLocation = new TrainingLocation();
+            var user = _unitOfWork.UserRepository.FindById(trainingLocationVM.UserId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            if (trainingLocationVM.TrainingLocationId == null || trainingLocationVM.TrainingLocationId == Guid.Empty)
+            {
+                trainingLocation = new TrainingLocation()
+                {
+                    Id = Guid.NewGuid(),
+                    LocationName = trainingLocationVM.LocationName,
+                    LocationAddress = trainingLocationVM.LocationAddress
+                };
+                user.TrainingLocations.Add(trainingLocation);
+            }
+            else
+            {
+                trainingLocation = user.TrainingLocations.Find(x => x.Id == trainingLocationVM.TrainingLocationId);
+                if (trainingLocation == null)
+                {
+                    return NotFound();
+                }
+
+                trainingLocation.LocationName = trainingLocationVM.LocationName;
+                trainingLocation.LocationAddress = trainingLocationVM.LocationAddress;
+            }
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return trainingLocation;
+
+        }
+
+        [HttpGet]
+        [Route("GetTrainingLocations/{userId}")]
+        public ActionResult<List<TrainingLocation>> GetTrainingLocations(Guid userId)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(userId);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.TrainingLocations;
 
         }
 
