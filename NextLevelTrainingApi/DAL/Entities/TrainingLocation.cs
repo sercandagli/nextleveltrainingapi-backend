@@ -9,6 +9,6 @@ namespace NextLevelTrainingApi.DAL.Entities
     {
         public Guid Id { get; set; }
         public string LocationName { get; set; }
-        public DateTime LocationAddress { get; set; }
+        public string LocationAddress { get; set; }
     }
 }
