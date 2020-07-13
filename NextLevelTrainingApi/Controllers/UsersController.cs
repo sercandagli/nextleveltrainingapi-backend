@@ -74,6 +74,46 @@ namespace NextLevelTrainingApi.Controllers
 
         }
 
+        [HttpPost]
+        [Route("CreatePost")]
+        public ActionResult<Post> CreatePost(PostViewModel postVM)
+        {
+            var post = new Post()
+            {
+                Id = Guid.NewGuid(),
+                Body = postVM.Body,
+                CreatedDate = DateTime.Now,
+                Header = postVM.Header,
+                MediaURL = postVM.MediaURL,
+                NumberOfLikes = postVM.NumberOfLikes
+            };
+            var user = _unitOfWork.UserRepository.FindById(postVM.UserID);
+            user.Posts.Add(post);
+            _unitOfWork.UserRepository.ReplaceOne(user);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return post;
+
+        }
+
+        [HttpGet]
+        [Route("GetPostsByUser/{id}")]
+        public ActionResult<List<Post>> GetPostsByUser(Guid id)
+        {
+            
+            var user = _unitOfWork.UserRepository.FindById(id);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.Posts;
+
+        }
 
     }
 }

@@ -13,6 +13,10 @@ namespace NextLevelTrainingApi.DAL.Entities
     [BsonCollection("Users")]
     public class Users: IDocument
     {
+        public Users()
+        {
+            this.Posts = new List<Post>();
+        }
         [BsonId]
         
         public Guid Id { get; set; }
@@ -28,5 +32,6 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string Password { get; set; }
 
         public string Role { get; set; }
+        public List<Post> Posts { get; set; }
     }
 }
