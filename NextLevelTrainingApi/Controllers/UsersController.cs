@@ -88,6 +88,10 @@ namespace NextLevelTrainingApi.Controllers
                 NumberOfLikes = postVM.NumberOfLikes
             };
             var user = _unitOfWork.UserRepository.FindById(postVM.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
             user.Posts.Add(post);
             _unitOfWork.UserRepository.ReplaceOne(user);
             if (user == null)
