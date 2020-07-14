@@ -21,7 +21,7 @@ using System.IO;
 namespace NextLevelTrainingApi.Controllers
 {
     [Route("api/[controller]")]
-    //[Authorize]
+    [Authorize]
     [ApiController]
     public class UsersController : ControllerBase
     {
