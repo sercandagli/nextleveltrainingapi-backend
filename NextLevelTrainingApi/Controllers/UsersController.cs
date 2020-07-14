@@ -16,11 +16,12 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
 using NextLevelTrainingApi.AuthDetails;
+using System.IO;
 
 namespace NextLevelTrainingApi.Controllers
 {
     [Route("api/[controller]")]
-    [Authorize]
+    //[Authorize]
     [ApiController]
     public class UsersController : ControllerBase
     {
@@ -503,5 +504,56 @@ namespace NextLevelTrainingApi.Controllers
 
         }
 
+        [HttpPost]
+        [Route("UploadFile")]
+        public async Task<ActionResult<string>> UploadFile(IFormFile file,string type)
+        {
+            if (file == null || file.Length == 0)
+                return Content("file not selected");
+            if (type.ToLower() == "post")
+            {
+                var path = Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Post",
+                            file.FileName);
+                if (!System.IO.Directory.Exists(Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Post"))){
+                    System.IO.Directory.CreateDirectory(Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Post"));
+                }
+                using (var stream = new FileStream(path, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                return path;
+            }
+            else
+            {
+                var path = Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Profile",
+                            file.FileName);
+                if (!System.IO.Directory.Exists(Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Profile")))
+                {
+                    System.IO.Directory.CreateDirectory(Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Profile"));
+                }
+                using (var stream = new FileStream(path, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+                if (user == null)
+                {
+                    return NotFound();
+                }
+
+                user.ProfileImage = path;
+                _unitOfWork.UserRepository.ReplaceOne(user);
+                return user.ProfileImage;
+            }
+        }
     }
 }

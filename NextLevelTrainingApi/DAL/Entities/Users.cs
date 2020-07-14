@@ -37,6 +37,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string Password { get; set; }
 
         public string Role { get; set; }
+        public string ProfileImage { get; set; }
         public string Achievements { get; set; }
         public string AboutUs { get; set; }
         public int Rate { get; set; }

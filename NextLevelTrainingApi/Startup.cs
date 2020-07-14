@@ -88,7 +88,14 @@ namespace NextLevelTrainingApi
             // specifying the Swagger JSON endpoint.
             app.UseSwaggerUI(c =>
             {
+#if DEBUG
+                // For Debug in Kestrel
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "NextLevelTraining API V1");
+#else
+   // To deploy on IIS
+  c.SwaggerEndpoint("/NextLevelTrainingApi/swagger/v1/swagger.json", "NextLevelTraining API V1");
+#endif
+
             });
 
             if (env.IsDevelopment())
