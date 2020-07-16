@@ -13,5 +13,8 @@ namespace NextLevelTrainingApi.ViewModels
         [Required]
         public string LocationName { get; set; }
         public string LocationAddress { get; set; }
+        public string Role { get; set; }
+        public string ImageUrl { get; set; }
+        public Guid PlayerOrCoachID { get; set; }
     }
 }

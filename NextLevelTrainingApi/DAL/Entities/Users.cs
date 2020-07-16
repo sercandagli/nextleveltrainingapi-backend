@@ -21,6 +21,9 @@ namespace NextLevelTrainingApi.DAL.Entities
             this.UpcomingMatches = new List<UpcomingMatch>();
             this.Experiences = new List<Experience>();
             this.TrainingLocations = new List<TrainingLocation>();
+            this.Coaches = new List<Coach>();
+            this.Availabilities = new List<Availability>();
+            this.TravelPostCodes = new List<TravelPostCode>();
         }
         [BsonId]
 
@@ -36,17 +39,26 @@ namespace NextLevelTrainingApi.DAL.Entities
 
         public string Password { get; set; }
 
+        public string SocialLoginType { get; set; }
+        public int? ProfileImageHeight { get; set; }
+        public int? ProfileImageWidth { get; set; }
+
         public string Role { get; set; }
         public string ProfileImage { get; set; }
         public string Achievements { get; set; }
         public string AboutUs { get; set; }
+        public string Accomplishment { get; set; }
         public int Rate { get; set; }
+        public BankAccount BankAccount { get; set; }
         public List<Experience> Experiences { get; set; }
+        public List<TravelPostCode> TravelPostCodes { get; set; }
+        public List<Availability> Availabilities { get; set; }
         public DocumentDetail DBSCeritificate { get; set; }
         public DocumentDetail VerificationDocument { get; set; }
         public List<TrainingLocation> TrainingLocations { get; set; }
         public List<Post> Posts { get; set; }
         public List<Team> Teams { get; set; }
         public List<UpcomingMatch> UpcomingMatches { get; set; }
+        public List<Coach> Coaches { get; set; }
     }
 }

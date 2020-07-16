@@ -6,8 +6,11 @@ using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.ViewModels
 {
-    public class AboutViewModel
-    {       
-        public string AboutUs { get; set; }
+    public class SocialMediaLoginViewModel
+    {
+        [Required]
+        public string Role { get; set; }
+        [Required]
+        public string AuthenticationToken { get; set; }
     }
 }

@@ -17,6 +17,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
 using NextLevelTrainingApi.AuthDetails;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Newtonsoft.Json;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -27,6 +30,7 @@ namespace NextLevelTrainingApi.Controllers
     {
         private IUnitOfWork _unitOfWork;
         private IUserContext _userContext;
+        //private readonly HttpClient _httpClient;
         public UsersController(IUnitOfWork unitOfWork, IUserContext userContext)
         {
             _unitOfWork = unitOfWork;
@@ -47,7 +51,7 @@ namespace NextLevelTrainingApi.Controllers
             return user;
         }
 
-        
+
         [HttpPost]
         [Route("CreatePost")]
         public ActionResult<Post> CreatePost(PostViewModel postVM)
@@ -191,7 +195,9 @@ namespace NextLevelTrainingApi.Controllers
                 team.StartDate = teamVM.StartDate;
                 team.EndDate = teamVM.EndDate;
 
-
+                var toRemove = user.Teams.Find(x => x.Id == teamVM.TeamID);
+                user.Teams.Remove(toRemove);
+                user.Teams.Add(team);
             }
             _unitOfWork.UserRepository.ReplaceOne(user);
             return team;
@@ -245,6 +251,10 @@ namespace NextLevelTrainingApi.Controllers
 
                 upcomingMatch.TeamName = upcomingMatchVM.TeamName;
                 upcomingMatch.MatchDate = upcomingMatchVM.MatchDate;
+
+                var toRemove = user.UpcomingMatches.Find(x => x.Id == upcomingMatchVM.UpcomingMatchID);
+                user.UpcomingMatches.Remove(toRemove);
+                user.UpcomingMatches.Add(upcomingMatch);
             }
 
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -303,6 +313,10 @@ namespace NextLevelTrainingApi.Controllers
                 experience.Club = experienceVM.Club;
                 experience.StartDate = experienceVM.StartDate;
                 experience.EndDate = experienceVM.CurrentlyWorking ? DateTime.Now : experienceVM.EndDate;
+
+                var toRemove = user.Experiences.Find(x => x.Id == experienceVM.ExperienceId);
+                user.Experiences.Remove(toRemove);
+                user.Experiences.Add(experience);
             }
 
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -389,7 +403,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.VerificationDocument.Verified = documentDetailVM.Verified;
             }
             else
-            {                
+            {
                 user.VerificationDocument.Path = documentDetailVM.Path;
                 user.VerificationDocument.Type = documentDetailVM.Type;
                 user.VerificationDocument.Verified = documentDetailVM.Verified;
@@ -466,7 +480,10 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     Id = Guid.NewGuid(),
                     LocationName = trainingLocationVM.LocationName,
-                    LocationAddress = trainingLocationVM.LocationAddress
+                    LocationAddress = trainingLocationVM.LocationAddress,
+                    ImageUrl = trainingLocationVM.ImageUrl,
+                    PlayerOrCoachID = trainingLocationVM.PlayerOrCoachID,
+                    Role = trainingLocationVM.Role
                 };
                 user.TrainingLocations.Add(trainingLocation);
             }
@@ -480,6 +497,13 @@ namespace NextLevelTrainingApi.Controllers
 
                 trainingLocation.LocationName = trainingLocationVM.LocationName;
                 trainingLocation.LocationAddress = trainingLocationVM.LocationAddress;
+                trainingLocation.ImageUrl = trainingLocationVM.ImageUrl;
+                trainingLocation.PlayerOrCoachID = trainingLocationVM.PlayerOrCoachID;
+                trainingLocation.Role = trainingLocationVM.Role;
+
+                var toRemove = user.TrainingLocations.Find(x => x.Id == trainingLocationVM.TrainingLocationId);
+                user.TrainingLocations.Remove(toRemove);
+                user.TrainingLocations.Add(trainingLocation);
             }
 
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -506,32 +530,55 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("UploadFile")]
-        public async Task<ActionResult<string>> UploadFile(IFormFile file,string type)
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<string>> UploadFile([FromForm] FileInputModel file)
         {
-            if (file == null || file.Length == 0)
+            if (file == null || file.File.Length == 0)
                 return Content("file not selected");
-            if (type.ToLower() == "post")
+
+            string[] data = file.File.FileName.Split('.');
+            string newFileName = data[0] + "-" + Guid.NewGuid().ToString() + "." + data[1];
+            if (file.Type.ToLower() == "post")
             {
                 var path = Path.Combine(
                             Directory.GetCurrentDirectory(), "wwwroot/Upload/Post",
-                            file.FileName);
+                            newFileName);
                 if (!System.IO.Directory.Exists(Path.Combine(
-                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Post"))){
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/Post")))
+                {
                     System.IO.Directory.CreateDirectory(Path.Combine(
                             Directory.GetCurrentDirectory(), "wwwroot/Upload/Post"));
                 }
                 using (var stream = new FileStream(path, FileMode.Create))
                 {
-                    await file.CopyToAsync(stream);
+                    await file.File.CopyToAsync(stream);
                 }
 
-                return path;
+                return "/Upload/Post/" + newFileName;
+            }
+            else if (file.Type.ToLower() == "location")
+            {
+                var path = Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/TrainingLocation",
+                            newFileName);
+                if (!System.IO.Directory.Exists(Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/TrainingLocation")))
+                {
+                    System.IO.Directory.CreateDirectory(Path.Combine(
+                            Directory.GetCurrentDirectory(), "wwwroot/Upload/TrainingLocation"));
+                }
+                using (var stream = new FileStream(path, FileMode.Create))
+                {
+                    await file.File.CopyToAsync(stream);
+                }
+
+                return "/Upload/TrainingLocation/" + newFileName;
             }
             else
             {
                 var path = Path.Combine(
                             Directory.GetCurrentDirectory(), "wwwroot/Upload/Profile",
-                            file.FileName);
+                            newFileName);
                 if (!System.IO.Directory.Exists(Path.Combine(
                             Directory.GetCurrentDirectory(), "wwwroot/Upload/Profile")))
                 {
@@ -540,7 +587,8 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 using (var stream = new FileStream(path, FileMode.Create))
                 {
-                    await file.CopyToAsync(stream);
+
+                    await file.File.CopyToAsync(stream);
                 }
 
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
@@ -550,10 +598,192 @@ namespace NextLevelTrainingApi.Controllers
                     return NotFound();
                 }
 
-                user.ProfileImage = path;
+                user.ProfileImage = "/Upload/Profile/" + newFileName; ;
                 _unitOfWork.UserRepository.ReplaceOne(user);
                 return user.ProfileImage;
             }
+        }
+
+        [HttpPost]
+        [Route("SaveCoach")]
+        public ActionResult<List<Coach>> SaveCoach(PlayerCoachViewModel playerCoachVM)
+        {
+            var coach = new Coach();
+            var player = _unitOfWork.UserRepository.FilterBy(x => x.Id == playerCoachVM.PlayerId && x.Role == Constants.PLAYER).SingleOrDefault();
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            coach = player.Coaches.Find(x => x.CoachId == playerCoachVM.CoachId && x.Status == playerCoachVM.Status);
+            if (coach == null)
+            {
+                var c = new Coach()
+                {
+                    CoachId = playerCoachVM.CoachId,
+                    Status = playerCoachVM.Status
+
+                };
+                player.Coaches.Add(c);
+            }
+
+            _unitOfWork.UserRepository.ReplaceOne(player);
+
+            return player.Coaches;
+
+        }
+
+        [HttpGet]
+        [Route("GetCoaches/{playerId}")]
+        public ActionResult<List<CoachViewModel>> GetCoaches(Guid playerId)
+        {
+
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.Id == playerId && x.Role.ToLower() == Constants.PLAYER).SingleOrDefault();
+            if (user == null)
+            {
+                return NotFound();
+            }
+            List<Guid> ids = user.Coaches.Select(x => x.CoachId).ToList();
+
+            var coaches = _unitOfWork.UserRepository.FilterBy(x => ids.Contains(x.Id)).ToList().Select(x => new CoachViewModel
+            {
+                FullName = x.FullName,
+                Address = x.Address,
+                EmailID = x.EmailID,
+                MobileNo = x.MobileNo,
+                Achievements = x.Achievements,
+                Experiences = x.Experiences
+            }).ToList();
+
+            return coaches;
+
+        }
+
+        [HttpGet]
+        [Route("SaveBankAccount")]
+        public ActionResult<BankAccount> SaveBankAccount(BankAccount bank)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            user.BankAccount = bank;
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return user.BankAccount;
+
+        }
+
+        [HttpGet]
+        [Route("GetBankAccount")]
+        public ActionResult<BankAccount> GetBankAccount()
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.BankAccount;
+
+        }
+
+        [HttpPost]
+        [Route("SaveAvailability")]
+        public ActionResult<List<Availability>> SaveAvailability(Availability availability)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            var avail = user.Availabilities.Where(x => x.Day == availability.Day).SingleOrDefault();
+            if (avail == null)
+            {
+                user.Availabilities.Add(availability);
+            }
+            else
+            {
+                user.Availabilities.Remove(avail);
+                user.Availabilities.Add(availability);
+            }
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return user.Availabilities;
+
+        }
+
+        [HttpPost]
+        [Route("SaveAccomplishment")]
+        public ActionResult<string> SaveAccomplishment(AccomplishmentViewModel accomplishment)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            user.Accomplishment = accomplishment.Accomplishment;
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return accomplishment.Accomplishment;
+
+        }
+
+        [HttpPost]
+        [Route("GetAccomplishment")]
+        public ActionResult<string> GetAccomplishment()
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.Accomplishment;
+
+        }
+
+        [HttpPost]
+        [Route("SaveTravelPostCode")]
+        public ActionResult<TravelPostCode> SaveTravelPostCode(TravelPostCode postCode)
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var postC = user.TravelPostCodes.Where(x => x.PostCode == postCode.PostCode).SingleOrDefault();
+            if (postC == null)
+            {
+                user.TravelPostCodes.Add(postCode);
+            }
+
+            return postCode;
+
+        }
+
+        [HttpPost]
+        [Route("GetTravelPostCodes")]
+        public ActionResult<List<TravelPostCode>> GetTravelPostCodes()
+        {
+
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return user.TravelPostCodes;
+
         }
     }
 }

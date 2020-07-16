@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using NextLevelTrainingApi.DAL.Entities;
 using NextLevelTrainingApi.DAL.Interfaces;
 using NextLevelTrainingApi.Helper;
@@ -66,6 +69,14 @@ namespace NextLevelTrainingApi.Controllers
                 return NotFound();
             }
 
+            string encryptedToken = GenerateToken(user);
+
+            return encryptedToken;
+
+        }
+
+        private string GenerateToken(Users user)
+        {
             // authentication successful so generate jwt token
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_jwtAppSettings.Secret);
@@ -82,9 +93,111 @@ namespace NextLevelTrainingApi.Controllers
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
             string encryptedToken = tokenHandler.WriteToken(token);
+            return encryptedToken;
+        }
+
+        [Route("FacebookLogin")]
+        [HttpPost]
+        public async Task<ActionResult<string>> FacebookLogin(SocialMediaLoginViewModel loginModel)
+        {
+            var result = await GetAsync<dynamic>(loginModel.AuthenticationToken, "me", "fields=first_name,last_name,email,picture.width(100).height(100)");
+            if (result == null)
+            {
+                return BadRequest("No User found or invalid token.");
+            }
+
+            var fbUserVM = JsonConvert.DeserializeObject<FacebookUserViewModel>(result);
+
+            if (string.IsNullOrEmpty(fbUserVM.Email))
+            {
+                return BadRequest("No EmailID found.");
+            }
+
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID == fbUserVM.Email).SingleOrDefault();
+            if (user == null)
+            {
+                user = new Users();
+                user.FullName = fbUserVM.FirstName + " " + fbUserVM.LastName;
+                user.EmailID = fbUserVM.Email;
+                user.Role = loginModel.Role;
+                user.SocialLoginType = Constants.FACEBOOK_LOGIN;
+                if (fbUserVM.Picture != null && fbUserVM.Picture.Data != null)
+                {
+                    user.ProfileImage = fbUserVM.Picture.Data.Url;
+                    user.ProfileImageHeight = fbUserVM.Picture.Data.Height;
+                    user.ProfileImageWidth = fbUserVM.Picture.Data.Width;
+                }
+                _unitOfWork.UserRepository.InsertOne(user);
+            }
+            else
+            {
+                user.FullName = fbUserVM.FirstName + " " + fbUserVM.LastName;
+                user.EmailID = fbUserVM.Email;
+                user.Role = loginModel.Role;
+                user.SocialLoginType = Constants.FACEBOOK_LOGIN;
+                if (fbUserVM.Picture != null && fbUserVM.Picture.Data != null)
+                {
+                    user.ProfileImage = fbUserVM.Picture.Data.Url;
+                    user.ProfileImageHeight = fbUserVM.Picture.Data.Height;
+                    user.ProfileImageWidth = fbUserVM.Picture.Data.Width;
+                }
+                _unitOfWork.UserRepository.ReplaceOne(user);
+            }
+
+            string encryptedToken = GenerateToken(user);
 
             return encryptedToken;
+        }
 
+        private async Task<string> GetAsync<T>(string accessToken, string endpoint, string args = null)
+        {
+            HttpClient _httpClient = new HttpClient
+            {
+                BaseAddress = new Uri("https://graph.facebook.com/v2.8/")
+            };
+
+            _httpClient.DefaultRequestHeaders
+                .Accept
+                .Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            var response = await _httpClient.GetAsync($"{endpoint}?access_token={accessToken}&{args}");
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var result = await response.Content.ReadAsStringAsync();
+
+            return result;
+        }
+
+
+        [Route("GoogleLogin")]
+        [HttpPost]
+        public async Task<GoogleUserViewModel> GoogleLogin(SocialMediaLoginViewModel loginModel)
+        {
+            HttpClient _httpClient = new HttpClient
+            {
+                BaseAddress = new Uri("https://www.googleapis.com/oauth2/v1/")
+            };
+
+            _httpClient.DefaultRequestHeaders
+                .Accept
+                .Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var response = await _httpClient.GetAsync("userinfo?alt=json&access_token=" + loginModel.AuthenticationToken);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var result = await response.Content.ReadAsStringAsync();
+
+            var profileDetails = JsonConvert.DeserializeObject<dynamic>(result);
+
+            var googleUserVM = new GoogleUserViewModel()
+            {
+                ProfileImage = profileDetails.picture,
+                Gender = profileDetails.gender,
+                FirstName = profileDetails.name
+            };
+
+            return googleUserVM;
         }
     }
 }

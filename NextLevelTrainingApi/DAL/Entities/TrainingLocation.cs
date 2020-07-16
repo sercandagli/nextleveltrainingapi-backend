@@ -10,5 +10,8 @@ namespace NextLevelTrainingApi.DAL.Entities
         public Guid Id { get; set; }
         public string LocationName { get; set; }
         public string LocationAddress { get; set; }
+        public string Role { get; set; }
+        public string ImageUrl { get; set; }
+        public Guid PlayerOrCoachID { get; set; }
     }
 }
