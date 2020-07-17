@@ -16,7 +16,6 @@ namespace NextLevelTrainingApi.DAL.Entities
     {
         public Users()
         {
-            this.Posts = new List<Post>();
             this.Teams = new List<Team>();
             this.UpcomingMatches = new List<UpcomingMatch>();
             this.Experiences = new List<Experience>();
@@ -24,6 +23,8 @@ namespace NextLevelTrainingApi.DAL.Entities
             this.Coaches = new List<Coach>();
             this.Availabilities = new List<Availability>();
             this.TravelPostCodes = new List<TravelPostCode>();
+            this.Reviews = new List<Review>();
+            this.UserMessages = new List<Message>();
         }
         [BsonId]
 
@@ -56,9 +57,10 @@ namespace NextLevelTrainingApi.DAL.Entities
         public DocumentDetail DBSCeritificate { get; set; }
         public DocumentDetail VerificationDocument { get; set; }
         public List<TrainingLocation> TrainingLocations { get; set; }
-        public List<Post> Posts { get; set; }
         public List<Team> Teams { get; set; }
         public List<UpcomingMatch> UpcomingMatches { get; set; }
         public List<Coach> Coaches { get; set; }
+        public List<Review> Reviews { get; set; }
+        public List<Message> UserMessages { get; set; }
     }
 }

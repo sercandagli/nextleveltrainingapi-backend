@@ -59,19 +59,15 @@ namespace NextLevelTrainingApi.Controllers
             var post = new Post()
             {
                 Id = Guid.NewGuid(),
+                UserId = _userContext.UserID,
                 Body = postVM.Body,
                 CreatedDate = DateTime.Now,
                 Header = postVM.Header,
                 MediaURL = postVM.MediaURL,
                 NumberOfLikes = postVM.NumberOfLikes
             };
-            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
-            if (user == null)
-            {
-                return NotFound();
-            }
-            user.Posts.Add(post);
-            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            _unitOfWork.PostRepository.InsertOne(post);
 
             return post;
 
@@ -81,15 +77,9 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetPostsByUser")]
         public ActionResult<List<Post>> GetPostsByUser()
         {
+            var posts = _unitOfWork.PostRepository.FilterBy(x=>x.UserId == _userContext.UserID).ToList();
 
-            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
-
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            return user.Posts;
+            return posts;
 
         }
 
@@ -783,6 +773,113 @@ namespace NextLevelTrainingApi.Controllers
             }
 
             return user.TravelPostCodes;
+
+        }
+
+        [HttpPost]
+        [Route("SaveReview")]
+        public ActionResult<ReviewViewModel> SaveReview(ReviewViewModel reviewVM)
+        {            
+            var coach = _unitOfWork.UserRepository.FilterBy(x => x.Id == reviewVM.CoachId && x.Role == Constants.COACH).SingleOrDefault();
+            if (coach == null)
+            {
+                return NotFound();
+            }
+
+
+            var review = new Review()
+            {
+                PlayerId = reviewVM.PlayerId,
+                Rating = reviewVM.Rating,
+                Feedback = reviewVM.Feedback
+            };
+
+            coach.Reviews.Add(review);
+        
+            _unitOfWork.UserRepository.ReplaceOne(coach);
+
+            return reviewVM;
+
+        }
+
+        [HttpGet]
+        [Route("GetReviews/{coachId}")]
+        public ActionResult<List<Review>> GetReviews(Guid coachId)
+        {
+
+            var coach = _unitOfWork.UserRepository.FilterBy(x => x.Id == coachId && x.Role.ToLower() == Constants.COACH).SingleOrDefault();
+            if (coach == null)
+            {
+                return NotFound();
+            }
+
+            return coach.Reviews;
+
+        }
+
+        [HttpPost]
+        [Route("SaveComment")]
+        public ActionResult<Comment> SaveComment(CommentViewModel commentVM)
+        {
+
+            var Post = _unitOfWork.PostRepository.FilterBy(x => x.Id == commentVM.PostId).SingleOrDefault();
+            if(Post == null)
+            {
+                return NotFound();
+            }
+
+            var comment = new Comment()
+            {
+                Id = Guid.NewGuid(),
+                CommentedBy = _userContext.UserID,
+                Text = commentVM.Text,
+                Commented = DateTime.Now
+            };
+
+            if(Post.Comments == null)
+            {
+                Post.Comments = new List<Comment>();
+            }
+
+            Post.Comments.Add(comment);
+
+            _unitOfWork.PostRepository.ReplaceOne(Post);
+
+            return comment;
+
+        }
+
+        [HttpGet]
+        [Route("GetComments/{postId}")]
+        public ActionResult<List<Comment>> GetComments(Guid postId)
+        {
+            var post = _unitOfWork.PostRepository.FindById(postId);
+            if (post == null)
+            {
+                return NotFound();
+            }            
+
+            return post.Comments;
+
+        }
+
+        [HttpPost]
+        [Route("SendMessage")]
+        public ActionResult<MessageViewModel> SendMessage(MessageViewModel messageVM)
+        {           
+
+            var message = new Message()
+            {
+                Id = Guid.NewGuid(),
+                Text = messageVM.Text,
+                ImageUrl = messageVM.ImageUrl,
+                ReceiverId = messageVM.ReceiverId,
+                SenderId = messageVM.SenderId
+            };
+
+            _unitOfWork.MessageRepository.InsertOne(message);
+
+            return messageVM;
 
         }
     }

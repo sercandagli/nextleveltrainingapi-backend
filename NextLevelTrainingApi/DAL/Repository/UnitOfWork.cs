@@ -31,6 +31,17 @@ namespace NextLevelTrainingApi.DAL.Repository
             get { return userRepository ?? (userRepository = new GenericRepository<Users>(_mongoDatabase)); }
         }
 
-       
+        private IGenericRepository<Message> messageRepository;
+        public IGenericRepository<Message> MessageRepository
+        {
+            get { return messageRepository ?? (messageRepository = new GenericRepository<Message>(_mongoDatabase)); }
+        }
+
+        private IGenericRepository<Post> postRepository;
+        public IGenericRepository<Post> PostRepository
+        {
+            get { return postRepository ?? (postRepository = new GenericRepository<Post>(_mongoDatabase)); }
+        }
+
     }
 }

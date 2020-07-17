@@ -3,14 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NextLevelTrainingApi.DAL.Entities
+namespace NextLevelTrainingApi.ViewModels
 {
-    public class Comment
+    public class CommentViewModel
     {
-        public Guid Id { get; set; }
+        public Guid PostId { get; set; }
         public string Text { get; set; }
         public Guid CommentedBy { get; set; }
-        public DateTime Commented { get; set; }
-
     }
 }

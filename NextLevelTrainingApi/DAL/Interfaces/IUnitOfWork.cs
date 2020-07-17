@@ -12,5 +12,7 @@ namespace NextLevelTrainingApi.DAL.Interfaces
         /// The repository for the user model.
         /// </summary>
         IGenericRepository<Users> UserRepository { get; }
+        IGenericRepository<Message> MessageRepository { get; }
+        IGenericRepository<Post> PostRepository { get; }
     }
 }
