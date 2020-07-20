@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NextLevelTrainingApi.DAL.Entities
+namespace NextLevelTrainingApi.ViewModels
 {
-    public class Availability
+    public class RescheduleBookingViewModel
     {
-        public string Day { get; set; }
+        public Guid BookingId { get; set; }
         public string FromTime { get; set; }
         public string ToTime { get; set; }
     }

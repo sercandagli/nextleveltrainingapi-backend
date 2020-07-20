@@ -38,7 +38,7 @@ namespace NextLevelTrainingApi.Controllers
             Users user = _unitOfWork.UserRepository.FindOne(x => x.EmailID.ToLower() == userVM.EmailID.ToLower());
             if (user != null)
             {
-                return BadRequest("EmailID already registered");
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "EmailID already registered." } } });
             }
 
             user = new Users()
@@ -55,6 +55,14 @@ namespace NextLevelTrainingApi.Controllers
             _unitOfWork.UserRepository.InsertOne(user);
 
             return user;
+        }
+
+        [HttpGet]
+        [Route("GetUserByEmail/{email}")]
+        public ActionResult<Users> GetUserByEmail(string email)
+        {
+
+            return _unitOfWork.UserRepository.FilterBy(x => x.EmailID == email).SingleOrDefault();
         }
 
         [HttpPost]
@@ -100,17 +108,17 @@ namespace NextLevelTrainingApi.Controllers
         [HttpPost]
         public async Task<ActionResult<string>> FacebookLogin(SocialMediaLoginViewModel loginModel)
         {
-            var result = await GetAsync<dynamic>(loginModel.AuthenticationToken, "me", "fields=first_name,last_name,email,picture.width(100).height(100)");
+            var result = await GetAsync<dynamic>(loginModel.AuthenticationToken, "https://graph.facebook.com/v2.8/", "me", "fields=first_name,last_name,email,picture.width(100).height(100)");
             if (result == null)
             {
-                return BadRequest("No User found or invalid token.");
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "No User found or invalid token." } } });
             }
 
             var fbUserVM = JsonConvert.DeserializeObject<FacebookUserViewModel>(result);
 
             if (string.IsNullOrEmpty(fbUserVM.Email))
             {
-                return BadRequest("No EmailID found.");
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "No EmailID found." } } });
             }
 
             var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID == fbUserVM.Email).SingleOrDefault();
@@ -135,6 +143,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.EmailID = fbUserVM.Email;
                 user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
+                user.AccessToken = loginModel.AuthenticationToken;
                 if (fbUserVM.Picture != null && fbUserVM.Picture.Data != null)
                 {
                     user.ProfileImage = fbUserVM.Picture.Data.Url;
@@ -149,11 +158,11 @@ namespace NextLevelTrainingApi.Controllers
             return encryptedToken;
         }
 
-        private async Task<string> GetAsync<T>(string accessToken, string endpoint, string args = null)
+        private async Task<string> GetAsync<T>(string accessToken, string baseURL, string endpoint, string args = null)
         {
             HttpClient _httpClient = new HttpClient
             {
-                BaseAddress = new Uri("https://graph.facebook.com/v2.8/")
+                BaseAddress = new Uri(baseURL)
             };
 
             _httpClient.DefaultRequestHeaders
@@ -171,33 +180,35 @@ namespace NextLevelTrainingApi.Controllers
 
         [Route("GoogleLogin")]
         [HttpPost]
-        public async Task<GoogleUserViewModel> GoogleLogin(SocialMediaLoginViewModel loginModel)
+        public ActionResult<string> GoogleLogin(GoogleUserViewModel loginModel)
         {
-            HttpClient _httpClient = new HttpClient
+
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID == loginModel.Email).SingleOrDefault();
+            if (user == null)
             {
-                BaseAddress = new Uri("https://www.googleapis.com/oauth2/v1/")
-            };
+                user = new Users();
+                user.FullName = loginModel.Name;
+                user.EmailID = loginModel.Email;
+                user.Role = loginModel.Role;
+                user.SocialLoginType = Constants.GOOGLE_LOGIN;
+                user.AccessToken = loginModel.AuthenticationToken;
 
-            _httpClient.DefaultRequestHeaders
-                .Accept
-                .Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            var response = await _httpClient.GetAsync("userinfo?alt=json&access_token=" + loginModel.AuthenticationToken);
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var result = await response.Content.ReadAsStringAsync();
-
-            var profileDetails = JsonConvert.DeserializeObject<dynamic>(result);
-
-            var googleUserVM = new GoogleUserViewModel()
+                user.ProfileImage = loginModel.Picture;
+                _unitOfWork.UserRepository.InsertOne(user);
+            }
+            else
             {
-                ProfileImage = profileDetails.picture,
-                Gender = profileDetails.gender,
-                FirstName = profileDetails.name
-            };
+                user.FullName = loginModel.Name;
+                user.Role = loginModel.Role;
+                user.AccessToken = loginModel.AuthenticationToken;
 
-            return googleUserVM;
+                user.ProfileImage = loginModel.Picture;
+                _unitOfWork.UserRepository.ReplaceOne(user);
+            }
+
+            string encryptedToken = GenerateToken(user);
+
+            return encryptedToken;
         }
     }
 }

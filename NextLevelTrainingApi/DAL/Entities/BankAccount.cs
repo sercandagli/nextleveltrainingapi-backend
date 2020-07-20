@@ -8,6 +8,8 @@ namespace NextLevelTrainingApi.DAL.Entities
     public class BankAccount
     {
         public string AccountName { get; set; }
+        public string BankName { get; set; }
+        public string AccountType { get; set; }
         public string AccountNumber { get; set; }
         public string Code { get; set; }
         public string Address { get; set; }

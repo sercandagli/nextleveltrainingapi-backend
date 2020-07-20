@@ -24,7 +24,7 @@ namespace NextLevelTrainingApi.DAL.Entities
             this.Availabilities = new List<Availability>();
             this.TravelPostCodes = new List<TravelPostCode>();
             this.Reviews = new List<Review>();
-            this.UserMessages = new List<Message>();
+            this.Qualifications = new List<UserQualification>();
         }
         [BsonId]
 
@@ -39,6 +39,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string MobileNo { get; set; }
 
         public string Password { get; set; }
+        public string AccessToken { get; set; }
 
         public string SocialLoginType { get; set; }
         public int? ProfileImageHeight { get; set; }
@@ -61,6 +62,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public List<UpcomingMatch> UpcomingMatches { get; set; }
         public List<Coach> Coaches { get; set; }
         public List<Review> Reviews { get; set; }
-        public List<Message> UserMessages { get; set; }
+
+        public List<UserQualification> Qualifications { get; set; }
     }
 }

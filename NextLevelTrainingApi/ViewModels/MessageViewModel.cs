@@ -11,5 +11,6 @@ namespace NextLevelTrainingApi.ViewModels
         public string ImageUrl { get; set; }
         public Guid SenderId { get; set; }
         public Guid ReceiverId { get; set; }
+        public DateTime SentDate { get; set; }
     }
 }

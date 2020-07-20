@@ -5,10 +5,9 @@ using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.DAL.Entities
 {
-    public class Availability
+    public class UserQualification
     {
-        public string Day { get; set; }
-        public string FromTime { get; set; }
-        public string ToTime { get; set; }
+        public Guid Id { get; set; }
+        public string Qualification { get; set; }
     }
 }

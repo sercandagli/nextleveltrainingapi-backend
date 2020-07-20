@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using NextLevelTrainingApi.AuthDetails;
 using Microsoft.OpenApi.Models;
+using NextLevelTrainingApi.Helper;
 
 namespace NextLevelTrainingApi
 {
@@ -102,6 +103,8 @@ namespace NextLevelTrainingApi
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseMiddleware<ExceptionMiddleware>();
 
             app.UseHttpsRedirection();
 

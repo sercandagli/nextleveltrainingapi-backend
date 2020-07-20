@@ -8,15 +8,12 @@ using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.DAL.Entities
 {
-    [BsonCollection("Messages")]
-    public class Message : IDocument
+    [BsonCollection("PostCodes")]
+    public class PostCode : IDocument
     {
         [BsonId]
         public Guid Id { get; set; }
-        public string Text { get; set; }
-        public string ImageUrl { get; set; }
-        public Guid SenderId { get; set; }
-        public Guid ReceiverId { get; set; }
-        public DateTime SentDate { get; set; }
+
+        public string Code { get; set; }
     }
 }
