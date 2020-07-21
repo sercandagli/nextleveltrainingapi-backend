@@ -54,6 +54,47 @@ namespace NextLevelTrainingApi.Controllers
 
 
         [HttpPost]
+        [Route("UpdateProfile")]
+        public ActionResult<Users> UpdateProfile(UpdateProfileViewModel profile)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            user.FullName = profile.FullName;
+            user.Address = profile.Address;
+            user.MobileNo = profile.MobileNo;
+            _unitOfWork.UserRepository.ReplaceOne(user);
+            return user;
+        }
+
+        [HttpPost]
+        [Route("ChangePassword")]
+        public ActionResult<bool> ChangePassword(ChangePasswordViewModel password)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+            if (password.OldPassword.Encrypt() == user.Password)
+            {
+                user.Password = password.NewPassword.Encrypt();
+                _unitOfWork.UserRepository.ReplaceOne(user);
+            }
+            else
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Old Password doesnot match." } } });
+            }
+            return true;
+        }
+
+
+        [HttpPost]
         [Route("CreatePost")]
         public ActionResult<Post> CreatePost(PostViewModel postVM)
         {
@@ -182,7 +223,7 @@ namespace NextLevelTrainingApi.Controllers
                 }
 
                 team.TeamImage = teamVM.TeamImage;
-                team.TeamName = teamVM.TeamImage;
+                team.TeamName = teamVM.TeamName;
                 team.StartDate = teamVM.StartDate;
                 team.EndDate = teamVM.EndDate;
 
@@ -195,6 +236,29 @@ namespace NextLevelTrainingApi.Controllers
 
         }
 
+
+
+        [HttpGet]
+        [Route("DeleteTeam/{Id}")]
+        public ActionResult<Team> DeleteTeam(Guid Id)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var team = user.Teams.Find(x => x.Id == Id);
+            if (team == null)
+            {
+                return NotFound();
+            }
+
+            user.Teams.Remove(team);
+            _unitOfWork.UserRepository.ReplaceOne(user);
+            return team;
+
+        }
 
         [HttpGet]
         [Route("GetTeams")]
@@ -254,6 +318,32 @@ namespace NextLevelTrainingApi.Controllers
 
         }
 
+
+
+        [HttpGet]
+        [Route("DeleteUpcomingMatch/{Id}")]
+        public ActionResult<UpcomingMatch> DeleteUpcomingMatch(Guid Id)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var upcomingMatch = user.UpcomingMatches.Find(x => x.Id == Id);
+            if (upcomingMatch == null)
+            {
+                return NotFound();
+            }
+
+            user.UpcomingMatches.Remove(upcomingMatch);
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return upcomingMatch;
+
+        }
+
         [HttpGet]
         [Route("GetUpcomingMatches")]
         public ActionResult<List<UpcomingMatch>> GetUpcomingMatches()
@@ -288,7 +378,8 @@ namespace NextLevelTrainingApi.Controllers
                     JobPosition = experienceVM.JobPosition,
                     Club = experienceVM.Club,
                     StartDate = experienceVM.StartDate,
-                    EndDate = experienceVM.CurrentlyWorking ? DateTime.Now : experienceVM.EndDate
+                    EndDate = experienceVM.EndDate,
+                    CurrentlyWorking = experienceVM.CurrentlyWorking
                 };
                 user.Experiences.Add(experience);
             }
@@ -303,12 +394,38 @@ namespace NextLevelTrainingApi.Controllers
                 experience.JobPosition = experienceVM.JobPosition;
                 experience.Club = experienceVM.Club;
                 experience.StartDate = experienceVM.StartDate;
-                experience.EndDate = experienceVM.CurrentlyWorking ? DateTime.Now : experienceVM.EndDate;
+                experience.EndDate = experienceVM.EndDate;
+                experience.CurrentlyWorking = experienceVM.CurrentlyWorking;
 
                 var toRemove = user.Experiences.Find(x => x.Id == experienceVM.ExperienceId);
                 user.Experiences.Remove(toRemove);
                 user.Experiences.Add(experience);
             }
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return experience;
+
+        }
+
+        [HttpGet]
+        [Route("DeleteExperience/{Id}")]
+        public ActionResult<Experience> DeleteExperience(Guid Id)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var experience = user.Experiences.Find(x => x.Id == Id);
+            if (experience == null)
+            {
+                return NotFound();
+            }
+
+
+            user.Experiences.Remove(experience);
 
             _unitOfWork.UserRepository.ReplaceOne(user);
 
@@ -504,6 +621,30 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
+        [Route("DeleteTrainingLocation/{Id}")]
+        public ActionResult<TrainingLocation> DeleteTrainingLocation(Guid Id)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+
+            var trainingLocation = user.TrainingLocations.Find(x => x.Id == Id);
+            if (trainingLocation == null)
+            {
+                return NotFound();
+            }
+            user.TrainingLocations.Remove(trainingLocation);
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return trainingLocation;
+
+        }
+
+        [HttpGet]
         [Route("GetTrainingLocations")]
         public ActionResult<List<TrainingLocation>> GetTrainingLocations()
         {
@@ -668,6 +809,28 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpPost]
+        [Route("DeleteCoach")]
+        public ActionResult<List<Coach>> DeleteCoach(PlayerCoachViewModel playerCoachVM)
+        {
+            var player = _unitOfWork.UserRepository.FilterBy(x => x.Id == playerCoachVM.PlayerId && x.Role == Constants.PLAYER).SingleOrDefault();
+            if (player == null)
+            {
+                return NotFound();
+            }
+
+            var coach = player.Coaches.Find(x => x.CoachId == playerCoachVM.CoachId && x.Status == playerCoachVM.Status);
+            if (coach != null)
+            {
+                player.Coaches.Remove(coach);
+                _unitOfWork.UserRepository.ReplaceOne(player);
+            }
+
+
+            return player.Coaches;
+
+        }
+
+        [HttpPost]
         [Route("SaveBankAccount")]
         public ActionResult<BankAccount> SaveBankAccount(BankAccount bank)
         {
@@ -725,6 +888,7 @@ namespace NextLevelTrainingApi.Controllers
             return user.Availabilities;
 
         }
+
 
         [HttpGet]
         [Route("GetAvailability")]
@@ -818,19 +982,57 @@ namespace NextLevelTrainingApi.Controllers
                 return NotFound();
             }
 
-
-            var review = new Review()
+            var existReview = coach.Reviews.Find(x => x.Id == reviewVM.Id);
+            if (existReview != null)
             {
-                PlayerId = reviewVM.PlayerId,
-                Rating = reviewVM.Rating,
-                Feedback = reviewVM.Feedback
-            };
+                existReview.PlayerId = reviewVM.PlayerId;
+                existReview.Rating = reviewVM.Rating;
+                existReview.Feedback = reviewVM.Feedback;
 
-            coach.Reviews.Add(review);
+                var toRemove = coach.Reviews.Find(x => x.Id == reviewVM.Id);
+                coach.Reviews.Remove(toRemove);
+                coach.Reviews.Add(existReview);
+
+            }
+            else
+            {
+                var review = new Review()
+                {
+                    PlayerId = reviewVM.PlayerId,
+                    Rating = reviewVM.Rating,
+                    Feedback = reviewVM.Feedback
+                };
+                coach.Reviews.Add(review);
+            }
+
 
             _unitOfWork.UserRepository.ReplaceOne(coach);
 
             return reviewVM;
+
+        }
+
+        [HttpGet]
+        [Route("DeleteReview/{Id}")]
+        public ActionResult<Review> DeleteReview(Guid Id)
+        {
+            var coach = _unitOfWork.UserRepository.FilterBy(x => x.Id == _userContext.UserID).SingleOrDefault();
+            if (coach == null)
+            {
+                return NotFound();
+            }
+
+            var existReview = coach.Reviews.Find(x => x.Id == Id);
+            if (existReview == null)
+            {
+                return NotFound();
+            }
+
+            coach.Reviews.Remove(existReview);
+
+            _unitOfWork.UserRepository.ReplaceOne(coach);
+
+            return existReview;
 
         }
 
@@ -880,6 +1082,28 @@ namespace NextLevelTrainingApi.Controllers
             return comment;
 
         }
+
+        [HttpGet]
+        [Route("DeleteComment/{Id}")]
+        public ActionResult<Comment> DeleteComment(Guid Id)
+        {
+
+            var Post = _unitOfWork.PostRepository.FilterBy(x => x.Comments.Where(z => z.Id == Id).Count() > 0).SingleOrDefault();
+            if (Post == null)
+            {
+                return NotFound();
+            }
+
+            var comment = Post.Comments.Find(x => x.Id == Id);
+
+            Post.Comments.Remove(comment);
+
+            _unitOfWork.PostRepository.ReplaceOne(Post);
+
+            return comment;
+
+        }
+
 
         [HttpGet]
         [Route("GetComments/{postId}")]

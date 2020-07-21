@@ -7,6 +7,7 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class ReviewViewModel
     {
+        public Guid? Id { get; set; }
         public Guid CoachId { get; set; }
         public Guid PlayerId { get; set; }
         public int Rating { get; set; }
