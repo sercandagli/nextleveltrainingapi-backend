@@ -8,7 +8,8 @@ namespace NextLevelTrainingApi.DAL.Entities
     public class Availability
     {
         public string Day { get; set; }
-        public string FromTime { get; set; }
-        public string ToTime { get; set; }
+        public DateTime FromTime { get; set; }
+        public DateTime ToTime { get; set; }
+        public bool IsWorking { get; set; }
     }
 }

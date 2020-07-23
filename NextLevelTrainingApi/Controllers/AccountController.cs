@@ -26,10 +26,12 @@ namespace NextLevelTrainingApi.Controllers
     {
         private IUnitOfWork _unitOfWork;
         private readonly JWTAppSettings _jwtAppSettings;
-        public AccountController(IUnitOfWork unitOfWork, IOptions<JWTAppSettings> jwtAppSettings)
+        private EmailSettings _emailSettings;
+        public AccountController(IUnitOfWork unitOfWork, IOptions<JWTAppSettings> jwtAppSettings, IOptions<EmailSettings> emailSettings)
         {
             _unitOfWork = unitOfWork;
             _jwtAppSettings = jwtAppSettings.Value;
+            _emailSettings = emailSettings.Value;
         }
         [HttpPost]
         [Route("Register")]
@@ -49,10 +51,21 @@ namespace NextLevelTrainingApi.Controllers
                 FullName = userVM.FullName,
                 MobileNo = userVM.MobileNo,
                 Role = userVM.Role,
-                Password = userVM.Password.Encrypt()
+                Password = userVM.Password.Encrypt(),
+                Lat = userVM.Lat,
+                Lng = userVM.Lng
             };
 
             _unitOfWork.UserRepository.InsertOne(user);
+
+            if (user.Role.ToLower() == Constants.COACH)
+            {
+                EmailHelper.SendEmail(user.EmailID, _emailSettings, "signupcoach");
+            }
+            else
+            {
+                EmailHelper.SendEmail(user.EmailID, _emailSettings, "signupplayer");
+            }
 
             return user;
         }
@@ -129,6 +142,14 @@ namespace NextLevelTrainingApi.Controllers
                 user.EmailID = fbUserVM.Email;
                 user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
+                if (loginModel.Lat != null)
+                {
+                    user.Lat = loginModel.Lat;
+                }
+                if (loginModel.Lng != null)
+                {
+                    user.Lng = loginModel.Lng;
+                }
                 if (fbUserVM.Picture != null && fbUserVM.Picture.Data != null)
                 {
                     user.ProfileImage = fbUserVM.Picture.Data.Url;
@@ -144,6 +165,14 @@ namespace NextLevelTrainingApi.Controllers
                 user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
+                if (loginModel.Lat != null)
+                {
+                    user.Lat = loginModel.Lat;
+                }
+                if (loginModel.Lng != null)
+                {
+                    user.Lng = loginModel.Lng;
+                }
                 if (fbUserVM.Picture != null && fbUserVM.Picture.Data != null)
                 {
                     user.ProfileImage = fbUserVM.Picture.Data.Url;
@@ -192,6 +221,14 @@ namespace NextLevelTrainingApi.Controllers
                 user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.GOOGLE_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
+                if (loginModel.Lat != null)
+                {
+                    user.Lat = loginModel.Lat;
+                }
+                if (loginModel.Lng != null)
+                {
+                    user.Lng = loginModel.Lng;
+                }
 
                 user.ProfileImage = loginModel.Picture;
                 _unitOfWork.UserRepository.InsertOne(user);
@@ -201,6 +238,14 @@ namespace NextLevelTrainingApi.Controllers
                 user.FullName = loginModel.Name;
                 user.Role = loginModel.Role;
                 user.AccessToken = loginModel.AuthenticationToken;
+                if (loginModel.Lat != null)
+                {
+                    user.Lat = loginModel.Lat;
+                }
+                if (loginModel.Lng != null)
+                {
+                    user.Lng = loginModel.Lng;
+                }
 
                 user.ProfileImage = loginModel.Picture;
                 _unitOfWork.UserRepository.ReplaceOne(user);

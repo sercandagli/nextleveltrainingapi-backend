@@ -50,6 +50,7 @@ namespace NextLevelTrainingApi
             services.Configure<JWTAppSettings>(appSettingsSection);
             // configure jwt authentication
             var appSettings = appSettingsSection.Get<JWTAppSettings>();
+            services.Configure<EmailSettings>(Configuration.GetSection("EmailSettings"));
             var key = Encoding.ASCII.GetBytes(appSettings.Secret);
             services.AddAuthentication(x =>
             {
@@ -110,6 +111,7 @@ namespace NextLevelTrainingApi
 
             app.UseRouting();
 
+            app.UseStaticFiles();
             // global cors policy
             app.UseCors(x => x
                 .AllowAnyOrigin()

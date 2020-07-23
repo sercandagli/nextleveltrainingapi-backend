@@ -17,6 +17,7 @@ namespace NextLevelTrainingApi.ViewModels
 
         public string MediaURL { get; set; }
         public int NumberOfLikes { get; set; }
+        public bool IsVerified { get; set; }
 
     }
 }

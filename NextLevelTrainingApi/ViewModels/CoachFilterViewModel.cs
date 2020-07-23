@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.ViewModels
 {
-    public class SenderRecieverViewModel
+    public class CoachFilterViewModel
     {
-        public Guid SenderID { get; set; }
-        public Guid ReceiverId { get; set; }
+        public Guid PlayerId { get; set; }
+        public string Search { get; set; }
     }
 }

@@ -6,13 +6,11 @@ using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.ViewModels
 {
-    public class SocialMediaLoginViewModel
+    public class BookingFilterViewModel
     {
         [Required]
-        public string Role { get; set; }
+        public Guid UserID { get; set; }
         [Required]
-        public string AuthenticationToken { get; set; }
-        public decimal? Lat { get; set; }
-        public decimal? Lng { get; set; }
+        public string Role { get; set; }
     }
 }

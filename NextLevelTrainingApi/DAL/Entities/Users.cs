@@ -50,7 +50,10 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string Achievements { get; set; }
         public string AboutUs { get; set; }
         public string Accomplishment { get; set; }
+        public decimal? Lat { get; set; }
+        public decimal? Lng { get; set; }
         public int Rate { get; set; }
+        public TravelMiles TravelMile { get; set; }
         public BankAccount BankAccount { get; set; }
         public List<Experience> Experiences { get; set; }
         public List<TravelPostCode> TravelPostCodes { get; set; }

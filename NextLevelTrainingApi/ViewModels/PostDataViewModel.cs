@@ -1,24 +1,13 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-using NextLevelTrainingApi.DAL.Interfaces;
-using NextLevelTrainingApi.Helper;
+﻿using NextLevelTrainingApi.DAL.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NextLevelTrainingApi.DAL.Entities
+namespace NextLevelTrainingApi.ViewModels
 {
-    [BsonCollection("Posts")]
-    public class Post:IDocument
+    public class PostDataViewModel
     {
-
-        public Post()
-        {
-            this.Comments = new List<Comment>();
-            this.Likes = new List<Likes>();
-        }
-
-        [BsonId]
         public Guid Id { get; set; }
 
         public Guid UserId { get; set; }
@@ -31,6 +20,8 @@ namespace NextLevelTrainingApi.DAL.Entities
         public int NumberOfLikes { get; set; }
         public bool IsVerified { get; set; }
 
+        public string CreatedBy { get; set; }
+        public string ProfileImage { get; set; }
         public DateTime CreatedDate { get; set; }
 
         public List<Comment> Comments { get; set; }

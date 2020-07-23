@@ -8,7 +8,7 @@ namespace NextLevelTrainingApi.ViewModels
     public class RescheduleBookingViewModel
     {
         public Guid BookingId { get; set; }
-        public string FromTime { get; set; }
-        public string ToTime { get; set; }
+        public DateTime FromTime { get; set; }
+        public DateTime ToTime { get; set; }
     }
 }

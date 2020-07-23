@@ -19,5 +19,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string Role { get; set; }
         [Required]
         public string AuthenticationToken { get; set; }
+        public decimal? Lat { get; set; }
+        public decimal? Lng { get; set; }
     }
 }

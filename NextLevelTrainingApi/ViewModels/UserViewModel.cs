@@ -23,5 +23,9 @@ namespace NextLevelTrainingApi.ViewModels
 
         [Required]
         public string Role { get; set; }
+
+        public decimal? Lat { get; set; }
+
+        public decimal? Lng { get; set; }
     }
 }

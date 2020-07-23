@@ -1,17 +1,13 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-using NextLevelTrainingApi.DAL.Interfaces;
-using NextLevelTrainingApi.Helper;
+﻿using NextLevelTrainingApi.DAL.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NextLevelTrainingApi.DAL.Entities
+namespace NextLevelTrainingApi.ViewModels
 {
-    [BsonCollection("Bookings")]
-    public class Booking : IDocument
+    public class BookingViewModel
     {
-        [BsonId]
         public Guid Id { get; set; }
         public Guid PlayerID { get; set; }
         public int BookingNumber { get; set; }
@@ -19,6 +15,8 @@ namespace NextLevelTrainingApi.DAL.Entities
         public DateTime FromTime { get; set; }
         public DateTime ToTime { get; set; }
         public DateTime SentDate { get; set; }
+        public string FullName { get; set; }
+        public TrainingLocation Location { get; set; }
 
         public Guid TrainingLocationID { get; set; }
         public decimal Amount { get; set; }

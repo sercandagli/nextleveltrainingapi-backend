@@ -12,5 +12,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string Address { get; set; }
 
         public string MobileNo { get; set; }
+        public decimal? Lat { get; set; }
+        public decimal? Lng { get; set; }
     }
 }

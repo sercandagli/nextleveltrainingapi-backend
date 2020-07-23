@@ -9,6 +9,6 @@ namespace NextLevelTrainingApi.ViewModels
     {
         public Guid PlayerId  { get; set; }
         public Guid CoachId { get; set; }
-        public string Status { get; set; }
+        //public string Status { get; set; }
     }
 }
