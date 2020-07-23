@@ -10,8 +10,9 @@ namespace NextLevelTrainingApi.ViewModels
         public Guid MessageID { get; set; }
         public string Message { get; set; }
         public Guid RecieverID { get; set; }
-        public string SenderName { get; set; }
+        public Guid SenderID { get; set; }
+        public string ReceiverName { get; set; }
         public DateTime SentDate { get; set; }
-        public string SenderProfilePic { get; set; }
+        public string ReceiverProfilePic { get; set; }
     }
 }

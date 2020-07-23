@@ -22,6 +22,7 @@ using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.TagHelpers;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -182,18 +183,17 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetPostsByUser")]
-        public ActionResult<List<PostDataViewModel>> GetPostsByUser()
+        [Route("GetPostsByUser/{coachId}")]
+        public ActionResult<List<PostDataViewModel>> GetPostsByUser(Guid coachId)
         {
             string baseUrl = _jwtAppSettings.AppBaseURL;
 
             var userPosts = (from post in _unitOfWork.PostRepository.AsQueryable()
-                             join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
-                             where post.UserId == _userContext.UserID
+                                 //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
+                             where post.UserId == coachId
                              select new PostDataViewModel()
                              {
                                  Body = post.Body,
-                                 Comments = post.Comments,
                                  CreatedDate = post.CreatedDate,
                                  Header = post.Header,
                                  Id = post.Id,
@@ -202,14 +202,41 @@ namespace NextLevelTrainingApi.Controllers
                                  MediaURL = baseUrl + post.MediaURL,
                                  NumberOfLikes = post.NumberOfLikes,
                                  UserId = post.UserId,
-                                 CreatedBy = usr.FullName,
-                                 ProfileImage = usr.ProfileImage,
+                                 //CreatedBy = usr.FullName,
+                                 //ProfileImage = usr.ProfileImage,
                              }).ToList();
 
-            userPosts.ForEach(usr => usr.ProfileImage = (usr.ProfileImage.Contains("http://") || usr.ProfileImage.Contains("https:/")) ? usr.ProfileImage : baseUrl + usr.ProfileImage);
+            foreach (var item in userPosts)
+            {
+                var puser = _unitOfWork.UserRepository.FindById(item.UserId);
+                if (puser != null)
+                {
+                    item.ProfileImage = puser.ProfileImage != null ? ((puser.ProfileImage.Contains("http://") || puser.ProfileImage.Contains("https:/")) ? puser.ProfileImage : baseUrl + puser.ProfileImage) : "";
+                    item.CreatedBy = puser.FullName;
+                }
+                var comments = _unitOfWork.PostRepository.FindById(item.Id).Comments;
+                item.Comments = new List<CommentedByViewModel>();
+                if (comments != null)
+                {
+                    foreach (var comment in comments)
+                    {
+                        var com = new CommentedByViewModel();
+                        var user = _unitOfWork.UserRepository.FindById(comment.CommentedBy);
+                        if (user != null)
+                        {
+                            com.ProfileImage = user.ProfileImage != null ? ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https:/")) ? user.ProfileImage : baseUrl + user.ProfileImage) : "";
+                            com.FullName = user.FullName;
+                        }
+                        com.Id = comment.Id;
+                        com.CommentedBy = comment.CommentedBy;
+                        com.Commented = comment.Commented;
+                        com.Text = comment.Text;
+                        item.Comments.Add(com);
+                    }
+                }
+            }
 
             return userPosts;
-
         }
 
         [HttpGet]
@@ -219,11 +246,10 @@ namespace NextLevelTrainingApi.Controllers
             string baseUrl = _jwtAppSettings.AppBaseURL;
 
             var userPosts = (from post in _unitOfWork.PostRepository.AsQueryable()
-                             join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
+                                 //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
                              select new PostDataViewModel()
                              {
                                  Body = post.Body,
-                                 Comments = post.Comments,
                                  CreatedDate = post.CreatedDate,
                                  Header = post.Header,
                                  Id = post.Id,
@@ -232,10 +258,39 @@ namespace NextLevelTrainingApi.Controllers
                                  MediaURL = baseUrl + post.MediaURL,
                                  NumberOfLikes = post.NumberOfLikes,
                                  UserId = post.UserId,
-                                 CreatedBy = usr.FullName,
-                                 ProfileImage = (usr.ProfileImage.Contains("http://") || usr.ProfileImage.Contains("https:/")) ? usr.ProfileImage : baseUrl + usr.ProfileImage
+                                 //CreatedBy = usr.FullName,
+                                 //ProfileImage = (usr.ProfileImage.Contains("http://") || usr.ProfileImage.Contains("https:/")) ? usr.ProfileImage : baseUrl + usr.ProfileImage
                              }).ToList();
 
+            foreach (var item in userPosts)
+            {
+                var puser = _unitOfWork.UserRepository.FindById(item.UserId);
+                if (puser != null)
+                {
+                    item.ProfileImage = puser.ProfileImage != null ? ((puser.ProfileImage.Contains("http://") || puser.ProfileImage.Contains("https:/")) ? puser.ProfileImage : baseUrl + puser.ProfileImage) : "";
+                    item.CreatedBy = puser.FullName;
+                }
+                var comments = _unitOfWork.PostRepository.FindById(item.Id).Comments;
+                item.Comments = new List<CommentedByViewModel>();
+                if (comments != null)
+                {
+                    foreach (var comment in comments)
+                    {
+                        var com = new CommentedByViewModel();
+                        var user = _unitOfWork.UserRepository.FindById(comment.CommentedBy);
+                        if (user != null)
+                        {
+                            com.ProfileImage = user.ProfileImage != null ? ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https:/")) ? user.ProfileImage : baseUrl + user.ProfileImage) : "";
+                            com.FullName = user.FullName;
+                        }
+                        com.Id = comment.Id;
+                        com.CommentedBy = comment.CommentedBy;
+                        com.Commented = comment.Commented;
+                        com.Text = comment.Text;
+                        item.Comments.Add(com);
+                    }
+                }
+            }
             return userPosts;
 
         }
@@ -1004,6 +1059,7 @@ namespace NextLevelTrainingApi.Controllers
                 Qualifications = x.Qualifications,
                 Reviews = x.Reviews,
                 VerificationDocument = x.VerificationDocument,
+                TrainingLocations = x.TrainingLocations,
                 AboutUs = x.AboutUs,
                 Rate = x.Rate,
                 Lat = x.Lat,
@@ -1014,6 +1070,14 @@ namespace NextLevelTrainingApi.Controllers
                 Status = playerCoaches.Where(z => z.CoachId == x.Id).FirstOrDefault() == null ? "None" : playerCoaches.Where(z => z.CoachId == x.Id).First().Status
             }).ToList();
 
+            foreach (var item in coaches)
+            {
+                item.ProfileImage = item.ProfileImage != null ? ((item.ProfileImage.Contains("http://") || item.ProfileImage.Contains("https:/")) ? item.ProfileImage : _jwtAppSettings.AppBaseURL + item.ProfileImage) : "";
+                foreach (var p in item.Posts)
+                {
+                    p.MediaURL = p.MediaURL != null ? ((p.MediaURL.Contains("http://") || p.MediaURL.Contains("https:/")) ? p.MediaURL : _jwtAppSettings.AppBaseURL + p.MediaURL) : "";
+                }
+            }
             return coaches;
 
         }
@@ -1356,23 +1420,27 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetLastMessages")]
         public ActionResult<List<LastMessageViewModel>> GetLastMessages()
         {
-            List<Guid> ids = _unitOfWork.MessageRepository.FilterBy(x => x.ReceiverId == _userContext.UserID).OrderByDescending(x => x.SentDate).Select(x => x.SenderId).Distinct().ToList();
+            List<Guid> senderIds = _unitOfWork.MessageRepository.FilterBy(x => x.ReceiverId == _userContext.UserID).OrderByDescending(x => x.SentDate).Select(x => x.SenderId).Distinct().ToList();
+            List<Guid> receiverIds = _unitOfWork.MessageRepository.FilterBy(x => x.SenderId == _userContext.UserID).OrderByDescending(x => x.SentDate).Select(x => x.ReceiverId).Distinct().ToList();
+            List<Guid> allIds = senderIds.Concat(receiverIds).Distinct().ToList();
             var messages = new List<LastMessageViewModel>();
-            foreach (var id in ids)
+            foreach (var id in allIds)
             {
                 var message = (from msg in _unitOfWork.MessageRepository.AsQueryable()
-                               join usr in _unitOfWork.UserRepository.AsQueryable() on msg.SenderId equals usr.Id
-                               where msg.SenderId == id && msg.ReceiverId == _userContext.UserID
+                               join usr in _unitOfWork.UserRepository.AsQueryable() on msg.ReceiverId equals usr.Id
+                               where (msg.SenderId == id && msg.ReceiverId == _userContext.UserID) || (msg.SenderId == _userContext.UserID && msg.ReceiverId == id)
                                select new LastMessageViewModel
                                {
                                    MessageID = msg.Id,
                                    Message = msg.Text,
                                    RecieverID = usr.Id,
-                                   SenderName = usr.FullName,
-                                   SenderProfilePic = usr.ProfileImage,
+                                   SenderID = msg.SenderId,
+                                   ReceiverName = usr.FullName,
+                                   ReceiverProfilePic = usr.ProfileImage,
                                    SentDate = msg.SentDate
-                               }).OrderByDescending(x => x.SentDate).First();
-                messages.Add(message);
+                               }).OrderByDescending(x => x.SentDate).FirstOrDefault();
+                if (message != null)
+                    messages.Add(message);
             }
 
 
@@ -1563,9 +1631,14 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetAvailableTimeByCoachId")]
         public ActionResult<List<string>> GetAvailableTimeByCoachId(CoachAvailabilityViewModel avalaibility)
         {
-
-            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == avalaibility.CoachID && (avalaibility.date.Date >= x.FromTime.Date && avalaibility.date.Date <= x.ToTime.Date)).ToList();
+            var startDate = new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddTicks(1);
+            var endDate = new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddDays(1).AddTicks(-2);
+            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == avalaibility.CoachID && (x.FromTime >= startDate && x.ToTime <= endDate)).ToList();
             var user = _unitOfWork.UserRepository.FindById(avalaibility.CoachID);
+            if (user == null)
+            {
+                return NotFound();
+            }
             var slots = user.Availabilities.Where(x => x.IsWorking == true);
 
             //List<string> bookedSlots = new List<string>();

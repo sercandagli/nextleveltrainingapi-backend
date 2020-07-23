@@ -24,7 +24,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string ProfileImage { get; set; }
         public DateTime CreatedDate { get; set; }
 
-        public List<Comment> Comments { get; set; }
+        public List<CommentedByViewModel> Comments { get; set; }
         public List<Likes> Likes { get; set; }
     }
 }
