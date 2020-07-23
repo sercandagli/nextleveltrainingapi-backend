@@ -1593,7 +1593,9 @@ namespace NextLevelTrainingApi.Controllers
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
                     ToTime = x.ToTime,
-                    TransactionID = x.TransactionID
+                    TransactionID = x.TransactionID,
+                    CancelledDateTime=x.CancelledDateTime,
+                    RescheduledDateTime=x.RescheduledDateTime
                 }
                 ).ToList();
             }
@@ -1615,7 +1617,9 @@ namespace NextLevelTrainingApi.Controllers
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
                     ToTime = x.ToTime,
-                    TransactionID = x.TransactionID
+                    TransactionID = x.TransactionID,
+                    CancelledDateTime = x.CancelledDateTime,
+                    RescheduledDateTime = x.RescheduledDateTime
                 }
                ).ToList();
             }
