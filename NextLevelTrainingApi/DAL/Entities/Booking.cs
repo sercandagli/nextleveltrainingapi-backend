@@ -25,5 +25,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string PaymentStatus { get; set; }
         public string TransactionID { get; set; }
         public string BookingStatus { get; set; }
+        public DateTime? RescheduledDateTime { get; set; }
+        public DateTime? CancelledDateTime { get; set; }
     }
 }

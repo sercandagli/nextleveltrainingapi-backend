@@ -1541,6 +1541,14 @@ namespace NextLevelTrainingApi.Controllers
                 _unitOfWork.UserRepository.ReplaceOne(user);
             }
             booking.Id = Guid.NewGuid();
+            if (_unitOfWork.BookingRepository.AsQueryable().Count() > 0)
+            {
+                booking.BookingNumber = _unitOfWork.BookingRepository.AsQueryable().Select(x => x.BookingNumber).Max() + 1;
+            }
+            else
+            {
+                booking.BookingNumber = 1;
+            }
             _unitOfWork.BookingRepository.InsertOne(booking);
 
             return booking;
@@ -1554,6 +1562,7 @@ namespace NextLevelTrainingApi.Controllers
 
             var booking = _unitOfWork.BookingRepository.FindById(bookingID);
             booking.BookingStatus = "Cancelled";
+            booking.CancelledDateTime = DateTime.Now;
             _unitOfWork.BookingRepository.ReplaceOne(booking);
 
             return booking;
@@ -1621,6 +1630,8 @@ namespace NextLevelTrainingApi.Controllers
             var b = _unitOfWork.BookingRepository.FindById(booking.BookingId);
             b.FromTime = booking.FromTime;
             b.ToTime = booking.ToTime;
+            b.BookingStatus = "Rescheduled";
+            b.RescheduledDateTime = DateTime.Now;
             _unitOfWork.BookingRepository.ReplaceOne(b);
 
             return b;
@@ -1639,7 +1650,7 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return NotFound();
             }
-            var slots = user.Availabilities.Where(x => x.IsWorking == true);
+            var slots = user.Availabilities.Where(x => x.IsWorking == true).ToList();
 
             //List<string> bookedSlots = new List<string>();
             //foreach (var book in bookings)
@@ -1655,19 +1666,19 @@ namespace NextLevelTrainingApi.Controllers
                 if (day == slot.Day.ToLower())
                 {
                     DateTime start = slot.FromTime;
-                    DateTime end = slot.ToTime;
+                    DateTime end = slot.FromTime;
 
                     for (int i = 0; i < 24; i++)
                     {
-                        if (end.AddHours(i + 1) > end)
+                        DateTime starttime = start.AddHours(i);
+                        DateTime endtime = end.AddHours(i + 1);
+                        if (endtime >= slot.ToTime)
                         {
                             break;
                         }
+                        availableSlots.Add(new Availability() { FromTime = starttime, ToTime = endtime });
 
-                        DateTime starttime = start.AddHours(i);
-                        DateTime endtime = end.AddHours(i + 1);
-                        availableSlots.Add(new Availability() { FromTime = start, ToTime = endtime });
-
+                        
                     }
 
                     break;
