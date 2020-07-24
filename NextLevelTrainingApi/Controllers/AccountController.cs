@@ -162,7 +162,6 @@ namespace NextLevelTrainingApi.Controllers
             {
                 user.FullName = fbUserVM.FirstName + " " + fbUserVM.LastName;
                 user.EmailID = fbUserVM.Email;
-                user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
                 if (loginModel.Lat != null)
@@ -236,7 +235,6 @@ namespace NextLevelTrainingApi.Controllers
             else
             {
                 user.FullName = loginModel.Name;
-                user.Role = loginModel.Role;
                 user.AccessToken = loginModel.AuthenticationToken;
                 if (loginModel.Lat != null)
                 {

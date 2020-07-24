@@ -53,6 +53,7 @@ namespace NextLevelTrainingApi.Controllers
                 return NotFound();
             }
 
+            user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
             return user;
         }
 
@@ -1523,7 +1524,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("SaveBooking")]
-        public ActionResult<Booking> SaveBooking(Booking booking)
+        public ActionResult<Booking> SaveBooking(BookingDataViewModel booking)
         {
             var user = _unitOfWork.UserRepository.FindById(booking.PlayerID);
             if (user == null)
@@ -1540,18 +1541,39 @@ namespace NextLevelTrainingApi.Controllers
                 user.Coaches.Add(coach);
                 _unitOfWork.UserRepository.ReplaceOne(user);
             }
-            booking.Id = Guid.NewGuid();
+            else
+            {
+                coach = new Coach();
+                coach.CoachId = booking.CoachID;
+                coach.Status = "Hired";
+                user.Coaches.Add(coach);
+                _unitOfWork.UserRepository.ReplaceOne(user);
+            }
+            string bookDate = booking.BookingDate.ToString("yyyy-MM-dd");
+            Booking book = new Booking();
+            book.Id = Guid.NewGuid();
+            book.Amount = booking.Amount;
+            book.BookingDate = booking.BookingDate;
+            book.BookingStatus = booking.BookingStatus;
+            book.PaymentStatus = booking.PaymentStatus;
+            book.PlayerID = booking.PlayerID;
+            book.TrainingLocationID = booking.TrainingLocationID;
+            book.CoachID = booking.CoachID;
+            book.TransactionID = booking.TransactionID;
+            book.SentDate = DateTime.Now;
+            book.FromTime = DateTime.ParseExact(bookDate + " " + booking.FromTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
+            book.ToTime = DateTime.ParseExact(bookDate + " " + booking.ToTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
             if (_unitOfWork.BookingRepository.AsQueryable().Count() > 0)
             {
-                booking.BookingNumber = _unitOfWork.BookingRepository.AsQueryable().Select(x => x.BookingNumber).Max() + 1;
+                book.BookingNumber = _unitOfWork.BookingRepository.AsQueryable().Select(x => x.BookingNumber).Max() + 1;
             }
             else
             {
-                booking.BookingNumber = 1;
+                book.BookingNumber = 1;
             }
-            _unitOfWork.BookingRepository.InsertOne(booking);
+            _unitOfWork.BookingRepository.InsertOne(book);
 
-            return booking;
+            return book;
 
         }
 
@@ -1594,8 +1616,9 @@ namespace NextLevelTrainingApi.Controllers
                     SentDate = x.SentDate,
                     ToTime = x.ToTime,
                     TransactionID = x.TransactionID,
-                    CancelledDateTime=x.CancelledDateTime,
-                    RescheduledDateTime=x.RescheduledDateTime
+                    CancelledDateTime = x.CancelledDateTime,
+                    RescheduledDateTime = x.RescheduledDateTime,
+                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate
                 }
                 ).ToList();
             }
@@ -1619,7 +1642,8 @@ namespace NextLevelTrainingApi.Controllers
                     ToTime = x.ToTime,
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
-                    RescheduledDateTime = x.RescheduledDateTime
+                    RescheduledDateTime = x.RescheduledDateTime,
+                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate
                 }
                ).ToList();
             }
@@ -1682,7 +1706,7 @@ namespace NextLevelTrainingApi.Controllers
                         }
                         availableSlots.Add(new Availability() { FromTime = starttime, ToTime = endtime });
 
-                        
+
                     }
 
                     break;

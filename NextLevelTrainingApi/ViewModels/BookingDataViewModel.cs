@@ -1,24 +1,17 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-using NextLevelTrainingApi.DAL.Interfaces;
-using NextLevelTrainingApi.Helper;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NextLevelTrainingApi.DAL.Entities
+namespace NextLevelTrainingApi.ViewModels
 {
-    [BsonCollection("Bookings")]
-    public class Booking : IDocument
+    public class BookingDataViewModel
     {
-        [BsonId]
-        public Guid Id { get; set; }
         public Guid PlayerID { get; set; }
-        public Guid CoachID { get; set; }
         public int BookingNumber { get; set; }
-        public DateTime FromTime { get; set; }
-        public DateTime ToTime { get; set; }
-        public DateTime SentDate { get; set; }
+        public Guid CoachID { get; set; }
+        public string FromTime { get; set; }
+        public string ToTime { get; set; }
         public DateTime BookingDate { get; set; }
 
         public Guid TrainingLocationID { get; set; }

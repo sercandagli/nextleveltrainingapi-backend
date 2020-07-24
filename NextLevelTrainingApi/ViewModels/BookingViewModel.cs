@@ -12,6 +12,7 @@ namespace NextLevelTrainingApi.ViewModels
         public Guid PlayerID { get; set; }
         public int BookingNumber { get; set; }
         public Guid CoachID { get; set; }
+        public int CoachRate { get; set; }
         public DateTime FromTime { get; set; }
         public DateTime ToTime { get; set; }
         public DateTime SentDate { get; set; }
