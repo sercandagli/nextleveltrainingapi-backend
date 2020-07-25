@@ -44,7 +44,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpGet]
         [Route("GetUser")]
-        public ActionResult<Users> GetUser()
+        public ActionResult<UserDataViewModel> GetUser()
         {
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
@@ -53,8 +53,51 @@ namespace NextLevelTrainingApi.Controllers
                 return NotFound();
             }
 
-            user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
-            return user;
+            UserDataViewModel usr = new UserDataViewModel();
+            usr.Id = user.Id;
+            usr.FullName = user.FullName;
+            usr.EmailID = user.EmailID;
+            usr.AboutUs = user.AboutUs;
+            usr.AccessToken = user.AccessToken;
+            usr.Accomplishment = user.Accomplishment;
+            usr.Address = user.Address;
+            usr.Lat = user.Lat;
+            usr.Lng = user.Lng;
+            usr.Rate = user.Rate;
+            usr.ProfileImageHeight = user.ProfileImageHeight;
+            usr.ProfileImageWidth = user.ProfileImageWidth;
+            usr.SocialLoginType = user.SocialLoginType;
+            usr.Role = user.Role;
+            usr.MobileNo = user.MobileNo;
+            usr.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
+
+            List<AvailabilityViewModel> availaibilities = new List<AvailabilityViewModel>();
+            foreach (var avail in user.Availabilities)
+            {
+                string date = DateTime.Now.ToString("yyyy-MM-dd");
+                availaibilities.Add(new AvailabilityViewModel()
+                {
+                    Day = avail.Day,
+                    IsWorking = avail.IsWorking,
+                    FromTime = avail.FromTime.ToString("hh: mm tt"),
+                    ToTime = avail.ToTime.ToString("hh: mm tt"),
+                });
+            }
+
+            usr.Availabilities = availaibilities;
+            usr.BankAccount = user.BankAccount;
+            usr.Achievements = user.Achievements;
+            usr.Coaches = user.Coaches;
+            usr.Experiences = user.Experiences;
+            usr.DBSCeritificate = user.DBSCeritificate;
+            usr.TrainingLocations = user.TrainingLocations;
+            usr.TravelMile = user.TravelMile;
+            usr.TravelPostCodes = user.TravelPostCodes;
+            usr.Teams = user.Teams;
+            usr.UpcomingMatches = user.UpcomingMatches;
+            usr.VerificationDocument = user.VerificationDocument;
+            usr.Reviews = user.Reviews;
+            return usr;
         }
 
 
