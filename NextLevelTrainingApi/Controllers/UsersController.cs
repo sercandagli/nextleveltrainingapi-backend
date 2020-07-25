@@ -1112,7 +1112,7 @@ namespace NextLevelTrainingApi.Controllers
                 AverageRating = x.Reviews.Count() > 0 ? (x.Reviews.Select(x => x.Rating).Sum() / x.Reviews.Count()).ToString() : "New",
                 Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id).ToList(),
                 Status = playerCoaches.Where(z => z.CoachId == x.Id).FirstOrDefault() == null ? "None" : playerCoaches.Where(z => z.CoachId == x.Id).First().Status
-            }).ToList();
+            }).Where(x => (x.DBSCeritificate != null && x.DBSCeritificate.Verified == true) && (x.VerificationDocument != null && x.VerificationDocument.Verified == true) && x.Rate != 0).ToList();
 
             foreach (var item in coaches)
             {
