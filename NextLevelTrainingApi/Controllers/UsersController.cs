@@ -1139,7 +1139,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("SaveAvailability")]
-        public ActionResult<List<Availability>> SaveAvailability(List<Availability> availability)
+        public ActionResult<List<Availability>> SaveAvailability(List<AvailabilityViewModel> availability)
         {
 
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
@@ -1147,7 +1147,21 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return NotFound();
             }
-            user.Availabilities = availability;
+
+            List<Availability> availaibilities = new List<Availability>();
+            foreach (var avail in availability)
+            {
+                string date = DateTime.Now.ToString("yyyy-MM-dd");
+                availaibilities.Add(new Availability()
+                {
+                    Day = avail.Day,
+                    IsWorking = avail.IsWorking,
+                    FromTime = DateTime.ParseExact(date + " " + avail.FromTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture),
+                    ToTime = DateTime.ParseExact(date + " " + avail.ToTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture)
+                });
+            }
+
+            user.Availabilities = availaibilities;
 
             _unitOfWork.UserRepository.ReplaceOne(user);
 
@@ -1158,7 +1172,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpGet]
         [Route("GetAvailability")]
-        public ActionResult<List<Availability>> GetAvailability()
+        public ActionResult<List<AvailabilityViewModel>> GetAvailability()
         {
 
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
@@ -1167,8 +1181,19 @@ namespace NextLevelTrainingApi.Controllers
                 return NotFound();
             }
 
-
-            return user.Availabilities;
+            List<AvailabilityViewModel> availaibilities = new List<AvailabilityViewModel>();
+            foreach (var avail in user.Availabilities)
+            {
+                string date = DateTime.Now.ToString("yyyy-MM-dd");
+                availaibilities.Add(new AvailabilityViewModel()
+                {
+                    Day = avail.Day,
+                    IsWorking = avail.IsWorking,
+                    FromTime = avail.FromTime.ToString("hh: mm tt"),
+                    ToTime = avail.ToTime.ToString("hh: mm tt"),
+                });
+            }
+            return availaibilities;
 
         }
 

@@ -160,6 +160,10 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
+                if (user.Role.ToLower() != loginModel.Role.ToLower())
+                {
+                    return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "EmailID already registered." } } });
+                }
                 user.FullName = fbUserVM.FirstName + " " + fbUserVM.LastName;
                 user.EmailID = fbUserVM.Email;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
@@ -234,6 +238,10 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
+                if(user.Role.ToLower() != loginModel.Role.ToLower())
+                {
+                    return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "EmailID already registered." } } });
+                }
                 user.FullName = loginModel.Name;
                 user.AccessToken = loginModel.AuthenticationToken;
                 if (loginModel.Lat != null)
