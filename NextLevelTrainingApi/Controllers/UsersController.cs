@@ -677,7 +677,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.DBSCeritificate = new DocumentDetail();
                 user.DBSCeritificate.Path = documentDetailVM.Path;
                 user.DBSCeritificate.Type = documentDetailVM.Type;
-                user.DBSCeritificate.Verified = documentDetailVM.Verified;
+                user.DBSCeritificate.Verified = true;
             }
             else
             {
@@ -726,7 +726,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.VerificationDocument = new DocumentDetail();
                 user.VerificationDocument.Path = documentDetailVM.Path;
                 user.VerificationDocument.Type = documentDetailVM.Type;
-                user.VerificationDocument.Verified = documentDetailVM.Verified;
+                user.VerificationDocument.Verified = true;
             }
             else
             {
