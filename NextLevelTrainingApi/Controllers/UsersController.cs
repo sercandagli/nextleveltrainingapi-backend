@@ -23,6 +23,7 @@ using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.TagHelpers;
 using Microsoft.Extensions.Options;
 using System.Globalization;
+using ImageMagick;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -50,7 +51,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             UserDataViewModel usr = new UserDataViewModel();
@@ -90,13 +91,25 @@ namespace NextLevelTrainingApi.Controllers
             usr.Coaches = user.Coaches;
             usr.Experiences = user.Experiences;
             usr.DBSCeritificate = user.DBSCeritificate;
+            if (usr.DBSCeritificate != null)
+            {
+                usr.DBSCeritificate.Path = string.IsNullOrEmpty(usr.DBSCeritificate.Path) ? "" : _jwtAppSettings.AppBaseURL + usr.DBSCeritificate.Path;
+            }
             usr.TrainingLocations = user.TrainingLocations;
             usr.TravelMile = user.TravelMile;
             usr.TravelPostCodes = user.TravelPostCodes;
             usr.Teams = user.Teams;
             usr.UpcomingMatches = user.UpcomingMatches;
             usr.VerificationDocument = user.VerificationDocument;
+            if (usr.VerificationDocument != null)
+            {
+                usr.VerificationDocument.Path = string.IsNullOrEmpty(usr.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + usr.VerificationDocument.Path;
+            }
             usr.Reviews = user.Reviews;
+            usr.Qualifications = user.Qualifications;
+
+            usr.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
+
             return usr;
         }
 
@@ -109,7 +122,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             user.FullName = profile.FullName;
@@ -129,7 +142,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             if (password.OldPassword.Encrypt() == user.Password)
             {
@@ -174,7 +187,7 @@ namespace NextLevelTrainingApi.Controllers
             var post = _unitOfWork.PostRepository.FindById(postVM.PostID);
             if (post == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
             post.NumberOfLikes = postVM.NumberOfLikes;
 
@@ -191,7 +204,7 @@ namespace NextLevelTrainingApi.Controllers
             var post = _unitOfWork.PostRepository.FindById(postVM.PostID);
             if (post == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
 
             if (post.Likes.Count(x => x.UserId == postVM.UserID) == 0)
@@ -212,7 +225,7 @@ namespace NextLevelTrainingApi.Controllers
             var post = _unitOfWork.PostRepository.FindById(Id);
             if (post == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
             var likes = (from usr in _unitOfWork.UserRepository.AsQueryable()
                          join lke in post.Likes on usr.Id equals lke.UserId
@@ -347,7 +360,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             user.AboutUs = aboutUsVM.AboutUs;
@@ -365,7 +378,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.AboutUs;
@@ -379,7 +392,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             user.Achievements = achievementVM.Achievements;
@@ -397,7 +410,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.Achievements;
@@ -413,7 +426,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             if (teamVM.TeamID == null || teamVM.TeamID == Guid.Empty)
             {
@@ -433,7 +446,7 @@ namespace NextLevelTrainingApi.Controllers
                 team = user.Teams.Find(x => x.Id == teamVM.TeamID);
                 if (team == null)
                 {
-                    return NotFound();
+                    return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Team not found." } } });
                 }
 
                 team.TeamImage = teamVM.TeamImage;
@@ -459,13 +472,13 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             var team = user.Teams.Find(x => x.Id == Id);
             if (team == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Team not found." } } });
             }
 
             user.Teams.Remove(team);
@@ -483,7 +496,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.Teams;
@@ -498,7 +511,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             if (upcomingMatchVM.UpcomingMatchID == null || upcomingMatchVM.UpcomingMatchID == Guid.Empty)
             {
@@ -515,7 +528,7 @@ namespace NextLevelTrainingApi.Controllers
                 upcomingMatch = user.UpcomingMatches.Find(x => x.Id == upcomingMatchVM.UpcomingMatchID);
                 if (upcomingMatch == null)
                 {
-                    return NotFound();
+                    return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Upcoming Match not found." } } });
                 }
 
                 upcomingMatch.TeamName = upcomingMatchVM.TeamName;
@@ -541,13 +554,13 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             var upcomingMatch = user.UpcomingMatches.Find(x => x.Id == Id);
             if (upcomingMatch == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Upcoming Match not found." } } });
             }
 
             user.UpcomingMatches.Remove(upcomingMatch);
@@ -567,7 +580,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.UpcomingMatches;
@@ -582,7 +595,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             if (experienceVM.ExperienceId == null || experienceVM.ExperienceId == Guid.Empty)
             {
@@ -602,7 +615,7 @@ namespace NextLevelTrainingApi.Controllers
                 experience = user.Experiences.Find(x => x.Id == experienceVM.ExperienceId);
                 if (experience == null)
                 {
-                    return NotFound();
+                    return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Experience not found." } } });
                 }
 
                 experience.JobPosition = experienceVM.JobPosition;
@@ -629,13 +642,13 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             var experience = user.Experiences.Find(x => x.Id == Id);
             if (experience == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Experience not found." } } });
             }
 
 
@@ -656,7 +669,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.Experiences;
@@ -670,7 +683,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             if (user.DBSCeritificate == null)
             {
@@ -701,7 +714,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             if (user.DBSCeritificate != null)
             {
@@ -719,7 +732,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             if (user.VerificationDocument == null)
             {
@@ -750,7 +763,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             if (user.VerificationDocument != null)
@@ -769,7 +782,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             user.Rate = priceVM.Rate;
@@ -787,7 +800,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.Rate;
@@ -802,7 +815,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             if (trainingLocationVM.TrainingLocationId == null || trainingLocationVM.TrainingLocationId == Guid.Empty)
@@ -825,7 +838,7 @@ namespace NextLevelTrainingApi.Controllers
                 trainingLocation = user.TrainingLocations.Find(x => x.Id == trainingLocationVM.TrainingLocationId);
                 if (trainingLocation == null)
                 {
-                    return NotFound();
+                    return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Location not found." } } });
                 }
 
                 trainingLocation.LocationName = trainingLocationVM.LocationName;
@@ -854,14 +867,14 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
 
             var trainingLocation = user.TrainingLocations.Find(x => x.Id == Id);
             if (trainingLocation == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Location not found." } } });
             }
             user.TrainingLocations.Remove(trainingLocation);
 
@@ -880,7 +893,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             foreach (var loc in user.TrainingLocations)
@@ -921,6 +934,10 @@ namespace NextLevelTrainingApi.Controllers
                     await file.File.CopyToAsync(stream);
                 }
 
+                if (file.File.ContentType.Contains("image/"))
+                {
+                    CompressImage(path);
+                }
                 var post = _unitOfWork.PostRepository.FilterBy(x => x.Id == file.Id).SingleOrDefault();
                 if (post != null)
                 {
@@ -945,7 +962,10 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     await file.File.CopyToAsync(stream);
                 }
-
+                if (file.File.ContentType.Contains("image/"))
+                {
+                    CompressImage(path);
+                }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
                 var loc = user.TrainingLocations.Where(x => x.Id == file.Id).SingleOrDefault();
                 if (loc != null)
@@ -974,7 +994,10 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     await file.File.CopyToAsync(stream);
                 }
-
+                if (file.File.ContentType.Contains("image/"))
+                {
+                    CompressImage(path);
+                }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
                 if (user.VerificationDocument != null)
                 {
@@ -998,7 +1021,10 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     await file.File.CopyToAsync(stream);
                 }
-
+                if (file.File.ContentType.Contains("image/"))
+                {
+                    CompressImage(path);
+                }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
                 if (user.DBSCeritificate != null)
                 {
@@ -1024,11 +1050,15 @@ namespace NextLevelTrainingApi.Controllers
                     await file.File.CopyToAsync(stream);
                 }
 
+                if (file.File.ContentType.Contains("image/"))
+                {
+                    CompressImage(path);
+                }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
                 if (user == null)
                 {
-                    return NotFound();
+                    return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
                 }
 
                 user.ProfileImage = "/Upload/Profile/" + newFileName;
@@ -1051,7 +1081,7 @@ namespace NextLevelTrainingApi.Controllers
             var player = _unitOfWork.UserRepository.FilterBy(x => x.Id == playerCoachVM.PlayerId).SingleOrDefault();
             if (player == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "Player not found." } } });
             }
 
             coach = player.Coaches.Find(x => x.CoachId == playerCoachVM.CoachId);
@@ -1084,7 +1114,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FilterBy(x => x.Id == coach.PlayerId && x.Role.ToLower() == Constants.PLAYER).SingleOrDefault();
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             List<Coach> playerCoaches = user.Coaches.ToList();
             coach.Search = coach.Search.ToLower();
@@ -1108,6 +1138,7 @@ namespace NextLevelTrainingApi.Controllers
                 Rate = x.Rate,
                 Lat = x.Lat,
                 Lng = x.Lng,
+                TravelMile = x.TravelMile,
                 ProfileImage = x.ProfileImage,
                 AverageRating = x.Reviews.Count() > 0 ? (x.Reviews.Select(x => x.Rating).Sum() / x.Reviews.Count()).ToString() : "New",
                 Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id).ToList(),
@@ -1133,7 +1164,7 @@ namespace NextLevelTrainingApi.Controllers
             var player = _unitOfWork.UserRepository.FilterBy(x => x.Id == playerCoachVM.PlayerId && x.Role == Constants.PLAYER).SingleOrDefault();
             if (player == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "Player not found." } } });
             }
 
             var coach = player.Coaches.Find(x => x.CoachId == playerCoachVM.CoachId);
@@ -1156,7 +1187,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             user.BankAccount = bank;
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -1173,7 +1204,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.BankAccount;
@@ -1188,7 +1219,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             List<Availability> availaibilities = new List<Availability>();
@@ -1221,7 +1252,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             List<AvailabilityViewModel> availaibilities = new List<AvailabilityViewModel>();
@@ -1248,7 +1279,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             user.Accomplishment = accomplishment.Accomplishment;
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -1265,7 +1296,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.Accomplishment;
@@ -1280,7 +1311,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             user.TravelPostCodes = postCodes;
@@ -1299,7 +1330,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.TravelPostCodes;
@@ -1313,7 +1344,7 @@ namespace NextLevelTrainingApi.Controllers
             var coach = _unitOfWork.UserRepository.FilterBy(x => x.Id == reviewVM.CoachId && x.Role == Constants.COACH).SingleOrDefault();
             if (coach == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             var existReview = coach.Reviews.Find(x => x.Id == reviewVM.Id);
@@ -1353,13 +1384,13 @@ namespace NextLevelTrainingApi.Controllers
             var coach = _unitOfWork.UserRepository.FilterBy(x => x.Id == _userContext.UserID).SingleOrDefault();
             if (coach == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             var existReview = coach.Reviews.Find(x => x.Id == Id);
             if (existReview == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Review not found." } } });
             }
 
             coach.Reviews.Remove(existReview);
@@ -1378,7 +1409,7 @@ namespace NextLevelTrainingApi.Controllers
             var coach = _unitOfWork.UserRepository.FilterBy(x => x.Id == coachId && x.Role.ToLower() == Constants.COACH).SingleOrDefault();
             if (coach == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return coach.Reviews;
@@ -1393,7 +1424,7 @@ namespace NextLevelTrainingApi.Controllers
             var Post = _unitOfWork.PostRepository.FilterBy(x => x.Id == commentVM.PostId).SingleOrDefault();
             if (Post == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
 
             var comment = new Comment()
@@ -1425,7 +1456,7 @@ namespace NextLevelTrainingApi.Controllers
             var Post = _unitOfWork.PostRepository.FilterBy(x => x.Comments.Where(z => z.Id == Id).Count() > 0).SingleOrDefault();
             if (Post == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
 
             var comment = Post.Comments.Find(x => x.Id == Id);
@@ -1446,7 +1477,7 @@ namespace NextLevelTrainingApi.Controllers
             var post = _unitOfWork.PostRepository.FindById(postId);
             if (post == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
 
             return post.Comments;
@@ -1505,7 +1536,7 @@ namespace NextLevelTrainingApi.Controllers
                                    RecieverID = usr.Id,
                                    SenderID = msg.SenderId,
                                    ReceiverName = usr.FullName,
-                                   ReceiverProfilePic = usr.ProfileImage,
+                                   ReceiverProfilePic = string.IsNullOrEmpty(usr.ProfileImage) ? "" : _jwtAppSettings.AppBaseURL + usr.ProfileImage,
                                    SentDate = msg.SentDate
                                }).OrderByDescending(x => x.SentDate).FirstOrDefault();
                 if (message != null)
@@ -1597,7 +1628,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(booking.PlayerID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             var coach = user.Coaches.Where(x => x.CoachId == booking.CoachID).SingleOrDefault();
             if (coach != null)
@@ -1686,9 +1717,21 @@ namespace NextLevelTrainingApi.Controllers
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
-                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate
+                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                    Player = new PlayerVM()
+                    {
+                        FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
+                        ProfileImage = _unitOfWork.UserRepository.FindById(x.PlayerID).ProfileImage,
+                        AboutUs = _unitOfWork.UserRepository.FindById(x.PlayerID).AboutUs,
+                        Achievements = _unitOfWork.UserRepository.FindById(x.PlayerID).Achievements,
+                        Teams = _unitOfWork.UserRepository.FindById(x.PlayerID).Teams,
+                        UpcomingMatches = _unitOfWork.UserRepository.FindById(x.PlayerID).UpcomingMatches,
+                    },
+                    CurrentTime = DateTime.Now
                 }
                 ).ToList();
+
+                bookings.ForEach(user => user.Player.ProfileImage = string.IsNullOrEmpty(user.Player.ProfileImage) ? "" : ((user.Player.ProfileImage.Contains("http://") || user.Player.ProfileImage.Contains("https://")) ? user.Player.ProfileImage : _jwtAppSettings.AppBaseURL + user.Player.ProfileImage));
             }
             else
             {
@@ -1711,7 +1754,8 @@ namespace NextLevelTrainingApi.Controllers
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
-                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate
+                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                    CurrentTime = DateTime.Now
                 }
                ).ToList();
             }
@@ -1744,7 +1788,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(avalaibility.CoachID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             var slots = user.Availabilities.Where(x => x.IsWorking == true).ToList();
 
@@ -1808,7 +1852,7 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             user.TravelMile = travel;
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -1825,11 +1869,18 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (user == null)
             {
-                return NotFound();
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
             return user.TravelMile;
         }
 
+
+        private void CompressImage(string path)
+        {
+            var optimizer = new ImageOptimizer();
+            optimizer.Compress(path);
+
+        }
     }
 }

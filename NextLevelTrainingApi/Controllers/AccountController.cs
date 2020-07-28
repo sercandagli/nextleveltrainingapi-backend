@@ -87,7 +87,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return NotFound();
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Invalid credentials." } } });
             }
 
             string encryptedToken = GenerateToken(user);

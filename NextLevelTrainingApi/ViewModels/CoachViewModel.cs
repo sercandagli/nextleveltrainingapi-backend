@@ -21,6 +21,7 @@ namespace NextLevelTrainingApi.ViewModels
         public int Rate { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }
+        public TravelMiles TravelMile { get; set; }
         public string AverageRating { get; set; }
         public List<Experience> Experiences { get; set; }
         public DocumentDetail DBSCeritificate { get; set; }
