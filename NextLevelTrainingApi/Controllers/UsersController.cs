@@ -179,14 +179,19 @@ namespace NextLevelTrainingApi.Controllers
 
             string[] tags = postVM.Body.Split(" ");
 
-            foreach(string tag in tags)
+            foreach (string tag in tags)
             {
                 if (!string.IsNullOrEmpty(tag) && tag.Trim().StartsWith("#"))
                 {
                     HashTag hashTag = new HashTag();
                     hashTag.Id = Guid.NewGuid();
                     hashTag.Tag = tag;
-                    _unitOfWork.HashTagRepository.InsertOne(hashTag);
+
+                    var ifExists = _unitOfWork.HashTagRepository.FilterBy(x => x.Tag.ToLower() == tag.ToLower()).SingleOrDefault();
+                    if (ifExists == null)
+                    {
+                        _unitOfWork.HashTagRepository.InsertOne(hashTag);
+                    }
                 }
             }
 
@@ -2149,7 +2154,7 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<List<HashTag>> GetHashTags()
         {
             var hashTags = _unitOfWork.HashTagRepository.AsQueryable().ToList();
-            
+
             return hashTags;
         }
         private void CompressImage(string path, IFormFile file)
