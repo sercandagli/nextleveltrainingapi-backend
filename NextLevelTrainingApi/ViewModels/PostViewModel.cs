@@ -9,7 +9,6 @@ namespace NextLevelTrainingApi.ViewModels
     public class PostViewModel
     {
 
-        [Required]
         public string Header { get; set; }
 
         [Required]

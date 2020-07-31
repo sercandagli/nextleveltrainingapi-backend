@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.DAL.Entities
 {
-    [BsonCollection("ErrorLog")]
-    public class ErrorLog: IDocument
+    [BsonCollection("HashTags")]
+    public class HashTag : IDocument
     {
         [BsonId]
+
         public Guid Id { get; set; }
-        public string Exception { get; set; }
-        public string StackTrace { get; set; }
-        public DateTime CreatedDate { get; set; }
+
+        public string Tag { get; set; }
     }
 }

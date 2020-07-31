@@ -37,6 +37,7 @@ namespace NextLevelTrainingApi.Helper
                 error.Id = Guid.NewGuid();
                 error.Exception = ex.Message;
                 error.StackTrace = ex.StackTrace;
+                error.CreatedDate = DateTime.Now;
                 _unitOfWork.ErrorLogRepository.InsertOne(error);
 
                 await HandleExceptionAsync(httpContext, ex);

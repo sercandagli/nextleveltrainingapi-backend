@@ -17,5 +17,6 @@ namespace NextLevelTrainingApi.DAL.Interfaces
         IGenericRepository<PostCode> PostCodeRepository { get; }
         IGenericRepository<Booking> BookingRepository { get; }
         IGenericRepository<ErrorLog> ErrorLogRepository { get; }
+        IGenericRepository<HashTag> HashTagRepository { get; }
     }
 }

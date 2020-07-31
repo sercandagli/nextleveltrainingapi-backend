@@ -18,6 +18,8 @@ namespace NextLevelTrainingApi.ViewModels
         [Required]
         public string Role { get; set; }
         [Required]
+        public string PostCode { get; set; }
+        [Required]
         public string AuthenticationToken { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }

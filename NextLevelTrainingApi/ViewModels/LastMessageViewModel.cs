@@ -14,5 +14,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string ReceiverName { get; set; }
         public DateTime SentDate { get; set; }
         public string ReceiverProfilePic { get; set; }
+        public string SenderName { get; set; }
+        public string SenderProfilePic { get; set; }
     }
 }

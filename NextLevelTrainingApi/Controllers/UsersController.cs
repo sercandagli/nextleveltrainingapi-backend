@@ -23,7 +23,8 @@ using Newtonsoft.Json;
 using Microsoft.AspNetCore.Mvc.TagHelpers;
 using Microsoft.Extensions.Options;
 using System.Globalization;
-using ImageMagick;
+using System.Drawing.Imaging;
+using System.Drawing;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -176,6 +177,19 @@ namespace NextLevelTrainingApi.Controllers
 
             _unitOfWork.PostRepository.InsertOne(post);
 
+            string[] tags = postVM.Body.Split(" ");
+
+            foreach(string tag in tags)
+            {
+                if (!string.IsNullOrEmpty(tag) && tag.Trim().StartsWith("#"))
+                {
+                    HashTag hashTag = new HashTag();
+                    hashTag.Id = Guid.NewGuid();
+                    hashTag.Tag = tag;
+                    _unitOfWork.HashTagRepository.InsertOne(hashTag);
+                }
+            }
+
             return post;
 
         }
@@ -227,13 +241,33 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
-            var likes = (from usr in _unitOfWork.UserRepository.AsQueryable()
-                         join lke in post.Likes on usr.Id equals lke.UserId
-                         select new LikeViewModel
-                         {
-                             FullName = usr.FullName,
-                             ProfileImage = usr.ProfileImage,
-                         }).ToList();
+            List<Guid> ids = post.Likes.Select(x => x.UserId).ToList();
+            //var likes = (from usr in _unitOfWork.UserRepository.us
+            //             join post.li 
+            //             select new LikeViewModel
+            //             {
+            //                 UserID = usr.Id,
+            //                 FullName = usr.FullName,
+            //                 ProfileImage = string.IsNullOrEmpty(usr.ProfileImage) ? "" : ((usr.ProfileImage.Contains("http://") || usr.ProfileImage.Contains("https:/")) ? usr.ProfileImage : _jwtAppSettings.AppBaseURL + usr.ProfileImage),
+            //             }).ToList();
+
+            List<LikeViewModel> likes = new List<LikeViewModel>();
+            foreach (var user in post.Likes)
+            {
+                var like = (from usr in _unitOfWork.UserRepository.AsQueryable()
+                            where usr.Id == user.UserId
+                            select new LikeViewModel
+                            {
+                                UserId = usr.Id,
+                                FullName = usr.FullName,
+                                ProfileImage = usr.ProfileImage
+                            }).SingleOrDefault();
+                if (like != null)
+                {
+                    like.ProfileImage = string.IsNullOrEmpty(like.ProfileImage) ? "" : ((like.ProfileImage.Contains("http://") || like.ProfileImage.Contains("https:/")) ? like.ProfileImage : _jwtAppSettings.AppBaseURL + like.ProfileImage);
+                    likes.Add(like);
+                }
+            }
 
             return likes;
 
@@ -243,11 +277,17 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetPostsByUser/{coachId}")]
         public ActionResult<List<PostDataViewModel>> GetPostsByUser(Guid coachId)
         {
-            string baseUrl = _jwtAppSettings.AppBaseURL;
+            var coachUser = _unitOfWork.UserRepository.FindById(coachId);
 
+            if (coachUser == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+            string baseUrl = _jwtAppSettings.AppBaseURL;
+            List<Guid> hiddenPostIds = coachUser.HiddenPosts.Select(x => x.PostId).ToList();
             var userPosts = (from post in _unitOfWork.PostRepository.AsQueryable()
                                  //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
-                             where post.UserId == coachId
+                             where post.UserId == coachId && !hiddenPostIds.Contains(post.Id)
                              select new PostDataViewModel()
                              {
                                  Body = post.Body,
@@ -300,10 +340,20 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetAllPosts")]
         public ActionResult<List<PostDataViewModel>> GetAllPosts()
         {
+            var usr = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (usr == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+            List<Guid> hiddenPostIds = usr.HiddenPosts.Select(x => x.PostId).ToList();
+
             string baseUrl = _jwtAppSettings.AppBaseURL;
 
             var userPosts = (from post in _unitOfWork.PostRepository.AsQueryable()
-                                 //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
+                             where !hiddenPostIds.Contains(post.Id)
+
+                             //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
                              select new PostDataViewModel()
                              {
                                  Body = post.Body,
@@ -843,7 +893,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 trainingLocation.LocationName = trainingLocationVM.LocationName;
                 trainingLocation.LocationAddress = trainingLocationVM.LocationAddress;
-                trainingLocation.ImageUrl = trainingLocationVM.ImageUrl;
+                //trainingLocation.ImageUrl = trainingLocationVM.ImageUrl;
                 trainingLocation.PlayerOrCoachID = trainingLocationVM.PlayerOrCoachID;
                 trainingLocation.Role = trainingLocationVM.Role;
                 trainingLocation.Lat = trainingLocationVM.Lat;
@@ -936,7 +986,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 if (file.File.ContentType.Contains("image/"))
                 {
-                    CompressImage(path);
+                    CompressImage(path, file.File);
                 }
                 var post = _unitOfWork.PostRepository.FilterBy(x => x.Id == file.Id).SingleOrDefault();
                 if (post != null)
@@ -964,7 +1014,7 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 if (file.File.ContentType.Contains("image/"))
                 {
-                    CompressImage(path);
+                    CompressImage(path, file.File);
                 }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
                 var loc = user.TrainingLocations.Where(x => x.Id == file.Id).SingleOrDefault();
@@ -996,7 +1046,7 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 if (file.File.ContentType.Contains("image/"))
                 {
-                    CompressImage(path);
+                    CompressImage(path, file.File);
                 }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
                 if (user.VerificationDocument != null)
@@ -1023,7 +1073,7 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 if (file.File.ContentType.Contains("image/"))
                 {
-                    CompressImage(path);
+                    CompressImage(path, file.File);
                 }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
                 if (user.DBSCeritificate != null)
@@ -1052,7 +1102,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 if (file.File.ContentType.Contains("image/"))
                 {
-                    CompressImage(path);
+                    CompressImage(path, file.File);
                 }
                 var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
@@ -1141,7 +1191,7 @@ namespace NextLevelTrainingApi.Controllers
                 TravelMile = x.TravelMile,
                 ProfileImage = x.ProfileImage,
                 AverageRating = x.Reviews.Count() > 0 ? (x.Reviews.Select(x => x.Rating).Sum() / x.Reviews.Count()).ToString() : "New",
-                Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id).ToList(),
+                Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id && !x.HiddenPosts.Select(h => h.PostId).Contains(z.Id)).ToList(),
                 Status = playerCoaches.Where(z => z.CoachId == x.Id).FirstOrDefault() == null ? "None" : playerCoaches.Where(z => z.CoachId == x.Id).First().Status
             }).Where(x => (x.DBSCeritificate != null && x.DBSCeritificate.Verified == true) && (x.VerificationDocument != null && x.VerificationDocument.Verified == true) && x.Rate != 0).ToList();
 
@@ -1430,7 +1480,7 @@ namespace NextLevelTrainingApi.Controllers
             var comment = new Comment()
             {
                 Id = Guid.NewGuid(),
-                CommentedBy = _userContext.UserID,
+                CommentedBy = commentVM.CommentedBy,
                 Text = commentVM.Text,
                 Commented = DateTime.Now
             };
@@ -1472,7 +1522,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpGet]
         [Route("GetComments/{postId}")]
-        public ActionResult<List<Comment>> GetComments(Guid postId)
+        public ActionResult<List<CommentedByViewModel>> GetComments(Guid postId)
         {
             var post = _unitOfWork.PostRepository.FindById(postId);
             if (post == null)
@@ -1480,7 +1530,27 @@ namespace NextLevelTrainingApi.Controllers
                 return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
             }
 
-            return post.Comments;
+            List<Guid> ids = post.Comments.Select(x => x.CommentedBy).ToList();
+            var users = _unitOfWork.UserRepository.FilterBy(x => ids.Contains(x.Id)).ToList();
+
+            List<CommentedByViewModel> comments = new List<CommentedByViewModel>();
+            foreach (var comment in post.Comments)
+            {
+                CommentedByViewModel cm = new CommentedByViewModel();
+                cm.Commented = comment.Commented;
+                cm.Id = comment.Id;
+                cm.Text = comment.Text;
+                cm.CommentedBy = comment.CommentedBy;
+                var user = users.Where(x => x.Id == cm.CommentedBy).SingleOrDefault();
+                if (user != null)
+                {
+                    cm.FullName = user.FullName;
+                    cm.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
+                }
+                comments.Add(cm);
+            }
+
+            return comments;
 
         }
 
@@ -1536,11 +1606,23 @@ namespace NextLevelTrainingApi.Controllers
                                    RecieverID = usr.Id,
                                    SenderID = msg.SenderId,
                                    ReceiverName = usr.FullName,
-                                   ReceiverProfilePic = string.IsNullOrEmpty(usr.ProfileImage) ? "" : _jwtAppSettings.AppBaseURL + usr.ProfileImage,
-                                   SentDate = msg.SentDate
+                                   ReceiverProfilePic = usr.ProfileImage,
+                                   SentDate = msg.SentDate,
+                                   //SenderName = _unitOfWork.UserRepository.FindById(msg.SenderId).FullName,
+                                   //SenderProfilePic = _unitOfWork.UserRepository.FindById(msg.SenderId).ProfileImage,
                                }).OrderByDescending(x => x.SentDate).FirstOrDefault();
                 if (message != null)
+                {
+                    var user = _unitOfWork.UserRepository.FindById(message.SenderID);
+                    if (user != null)
+                    {
+                        message.SenderName = user.FullName;
+                        message.SenderProfilePic = user.ProfileImage;
+                    }
+                    message.ReceiverProfilePic = string.IsNullOrEmpty(message.ReceiverProfilePic) ? "" : ((message.ReceiverProfilePic.Contains("http://") || message.ReceiverProfilePic.Contains("https://")) ? message.ReceiverProfilePic : _jwtAppSettings.AppBaseURL + message.ReceiverProfilePic);
+                    message.SenderProfilePic = string.IsNullOrEmpty(message.SenderProfilePic) ? "" : ((message.SenderProfilePic.Contains("http://") || message.SenderProfilePic.Contains("https://")) ? message.SenderProfilePic : _jwtAppSettings.AppBaseURL + message.SenderProfilePic);
                     messages.Add(message);
+                }
             }
 
 
@@ -1727,10 +1809,12 @@ namespace NextLevelTrainingApi.Controllers
                         Teams = _unitOfWork.UserRepository.FindById(x.PlayerID).Teams,
                         UpcomingMatches = _unitOfWork.UserRepository.FindById(x.PlayerID).UpcomingMatches,
                     },
+                    ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
                     CurrentTime = DateTime.Now
                 }
                 ).ToList();
 
+                bookings.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 bookings.ForEach(user => user.Player.ProfileImage = string.IsNullOrEmpty(user.Player.ProfileImage) ? "" : ((user.Player.ProfileImage.Contains("http://") || user.Player.ProfileImage.Contains("https://")) ? user.Player.ProfileImage : _jwtAppSettings.AppBaseURL + user.Player.ProfileImage));
             }
             else
@@ -1755,9 +1839,12 @@ namespace NextLevelTrainingApi.Controllers
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
                     CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                    ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
                     CurrentTime = DateTime.Now
                 }
                ).ToList();
+
+                bookings.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
             }
             return bookings;
         }
@@ -1875,12 +1962,228 @@ namespace NextLevelTrainingApi.Controllers
             return user.TravelMile;
         }
 
-
-        private void CompressImage(string path)
+        [HttpPost]
+        [Route("SearchPost")]
+        public ActionResult<SearchPostResultViewModel> SearchPost(SearchPostViewModel post)
         {
-            var optimizer = new ImageOptimizer();
-            optimizer.Compress(path);
+            var usr = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
+            if (usr == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            List<Guid> hiddenPostIds = usr.HiddenPosts.Select(x => x.PostId).ToList();
+            bool isStartWithHash = post.Search.StartsWith("#");
+            if (isStartWithHash)
+            {
+                var posts = _unitOfWork.PostRepository.AsQueryable().Where(x => !hiddenPostIds.Contains(x.Id) && x.Body.Contains(post.Search)).Select(post => new PostDataViewModel()
+                {
+                    Body = post.Body,
+                    CreatedDate = post.CreatedDate,
+                    Header = post.Header,
+                    Id = post.Id,
+                    IsVerified = post.IsVerified,
+                    Likes = post.Likes,
+                    MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                    NumberOfLikes = post.NumberOfLikes,
+                    UserId = post.UserId,
+                }).ToList();
+                List<Guid> userIds = posts.Select(x => x.UserId).ToList();
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH).Select(x => new SearchUserViewModel()
+                {
+                    Id = x.Id,
+                    Role = x.Role,
+                    Address = x.Address,
+                    EmailID = x.EmailID,
+                    FullName = x.FullName,
+                    MobileNo = x.MobileNo,
+                    ProfileImage = x.ProfileImage,
+                    PostCode = x.PostCode
+                }).ToList();
+
+                var players = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new SearchUserViewModel()
+                {
+                    Id = x.Id,
+                    Role = x.Role,
+                    Address = x.Address,
+                    EmailID = x.EmailID,
+                    FullName = x.FullName,
+                    MobileNo = x.MobileNo,
+                    ProfileImage = x.ProfileImage,
+                    PostCode = x.PostCode
+                }).ToList();
+
+
+                coaches.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+                players.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+                SearchPostResultViewModel searchResult = new SearchPostResultViewModel();
+                searchResult.Coaches = coaches;
+                searchResult.Players = players;
+                searchResult.Posts = posts;
+
+                return searchResult;
+            }
+            else
+            {
+                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.FullName.Contains(post.Search)).Select(x => new SearchUserViewModel()
+                {
+                    Id = x.Id,
+                    Role = x.Role,
+                    Address = x.Address,
+                    EmailID = x.EmailID,
+                    FullName = x.FullName,
+                    MobileNo = x.MobileNo,
+                    ProfileImage = x.ProfileImage,
+                    PostCode = x.PostCode
+                }).ToList();
+
+                users.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+                var players = users.Where(x => x.Role.ToLower() == Constants.PLAYER).ToList();
+                var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH).ToList();
+
+                List<Guid> userIds = users.Select(x => x.Id).ToList();
+                var posts = _unitOfWork.PostRepository.FilterBy(x => !hiddenPostIds.Contains(x.Id) && userIds.Contains(x.Id)).Select(post => new PostDataViewModel()
+                {
+                    Body = post.Body,
+                    CreatedDate = post.CreatedDate,
+                    Header = post.Header,
+                    Id = post.Id,
+                    IsVerified = post.IsVerified,
+                    Likes = post.Likes,
+                    MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                    NumberOfLikes = post.NumberOfLikes,
+                    UserId = post.UserId,
+                }).ToList();
+
+                SearchPostResultViewModel searchResult = new SearchPostResultViewModel();
+                searchResult.Coaches = coaches;
+                searchResult.Players = players;
+                searchResult.Posts = posts;
+
+                return searchResult;
+            }
+        }
+
+        [HttpPost]
+        [Route("HidePost")]
+        public ActionResult<bool> HidePost(HidePostViewModel post)
+        {
+            var user = _unitOfWork.UserRepository.FindById(post.UserID);
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            if (user.HiddenPosts.Count(x => x.PostId == post.PostId) == 0)
+            {
+                user.HiddenPosts.Add(new HiddenPosts() { PostId = post.PostId });
+            }
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return true;
+        }
+
+        [HttpPost]
+        [Route("ConnectUser")]
+        public ActionResult<bool> ConnectUser(ConnectUserViewModel connectedUser)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            if (connectedUser.IsConnected)
+            {
+                if (user.ConnectedUsers.Count(x => x.UserId == connectedUser.UserId) == 0)
+                {
+                    user.ConnectedUsers.Add(new ConnectedUsers() { UserId = connectedUser.UserId });
+                }
+            }
+            else
+            {
+                var toRemove = user.ConnectedUsers.Where(x => x.UserId == connectedUser.UserId).SingleOrDefault();
+                if (toRemove != null)
+                {
+                    user.ConnectedUsers.Remove(toRemove);
+                }
+            }
+
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return true;
+        }
+
+        [HttpGet]
+        [Route("GetConnectedUsers")]
+        public ActionResult<List<SearchUserViewModel>> GetConnectedUsers()
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            List<Guid> ids = user.ConnectedUsers.Select(x => x.UserId).ToList();
+            var connectedUsers = _unitOfWork.UserRepository.FilterBy(x => ids.Contains(x.Id)).Select(x => new SearchUserViewModel()
+            {
+                Id = x.Id,
+                Role = x.Role,
+                Address = x.Address,
+                EmailID = x.EmailID,
+                FullName = x.FullName,
+                MobileNo = x.MobileNo,
+                ProfileImage = x.ProfileImage,
+                PostCode = x.PostCode
+            }).ToList();
+
+            connectedUsers.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+
+            return connectedUsers;
+        }
+
+        [HttpGet]
+        [Route("GetHashTags")]
+        public ActionResult<List<HashTag>> GetHashTags()
+        {
+            var hashTags = _unitOfWork.HashTagRepository.AsQueryable().ToList();
+            
+            return hashTags;
+        }
+        private void CompressImage(string path, IFormFile file)
+        {
+            //var optimizer = new ImageOptimizer();
+            //optimizer.Compress(path);
+            // Encoder parameter for image quality 
+            if (file.ContentType.Contains("jpeg") || file.ContentType.Contains("jpg"))
+            {
+                System.IO.File.Delete(path);
+                Image img = Image.FromStream(file.OpenReadStream());
+                System.Drawing.Imaging.Encoder myEncoder =
+                    System.Drawing.Imaging.Encoder.Quality;
+                EncoderParameters myEncoderParameters = new EncoderParameters(1);
+                // JPEG image codec 
+                ImageCodecInfo jpegCodec = GetEncoderInfo(file.ContentType);
+                EncoderParameter myEncoderParameter = new EncoderParameter(myEncoder, 50L);
+                myEncoderParameters.Param[0] = myEncoderParameter;
+                img.Save(path, jpegCodec, myEncoderParameters);
+            }
+
+        }
+
+        private ImageCodecInfo GetEncoderInfo(string mimeType)
+        {
+            // Get image codecs for all image formats 
+            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageEncoders();
+
+            // Find the correct image codec 
+            for (int i = 0; i < codecs.Length; i++)
+                if (codecs[i].MimeType == mimeType)
+                    return codecs[i];
+
+            return null;
         }
     }
 }

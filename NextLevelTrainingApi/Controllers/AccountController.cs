@@ -53,7 +53,8 @@ namespace NextLevelTrainingApi.Controllers
                 Role = userVM.Role,
                 Password = userVM.Password.Encrypt(),
                 Lat = userVM.Lat,
-                Lng = userVM.Lng
+                Lng = userVM.Lng,
+                PostCode = userVM.PostCode
             };
 
             _unitOfWork.UserRepository.InsertOne(user);
@@ -75,7 +76,7 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<Users> GetUserByEmail(string email)
         {
 
-            return _unitOfWork.UserRepository.FilterBy(x => x.EmailID == email).SingleOrDefault();
+            return _unitOfWork.UserRepository.FilterBy(x => x.EmailID.ToLower() == email.ToLower()).SingleOrDefault();
         }
 
         [HttpPost]
@@ -141,6 +142,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.FullName = fbUserVM.FirstName + " " + fbUserVM.LastName;
                 user.EmailID = fbUserVM.Email;
                 user.Role = loginModel.Role;
+                user.PostCode = loginModel.PostCode;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
                 if (loginModel.Lat != null)
                 {
@@ -221,6 +223,7 @@ namespace NextLevelTrainingApi.Controllers
                 user = new Users();
                 user.FullName = loginModel.Name;
                 user.EmailID = loginModel.Email;
+                user.PostCode = loginModel.PostCode;
                 user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.GOOGLE_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
@@ -238,7 +241,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
-                if(user.Role.ToLower() != loginModel.Role.ToLower())
+                if (user.Role.ToLower() != loginModel.Role.ToLower())
                 {
                     return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "EmailID already registered." } } });
                 }

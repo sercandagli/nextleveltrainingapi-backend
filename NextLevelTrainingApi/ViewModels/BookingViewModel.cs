@@ -28,6 +28,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string BookingStatus { get; set; }
         public DateTime? RescheduledDateTime { get; set; }
         public DateTime? CancelledDateTime { get; set; }
+        public string ProfileImage { get; set; }
         public PlayerVM Player { get; set; }
     }
 

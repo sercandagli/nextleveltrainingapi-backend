@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.ViewModels
 {
-    public class LikeViewModel
+    public class ConnectUserViewModel
     {
+        [Required]
         public Guid UserId { get; set; }
-        public string FullName { get; set; }
-        public string ProfileImage { get; set; }
+        public bool IsConnected { get; set; }
     }
 }
