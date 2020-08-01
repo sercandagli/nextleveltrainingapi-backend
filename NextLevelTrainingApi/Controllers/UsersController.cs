@@ -65,6 +65,7 @@ namespace NextLevelTrainingApi.Controllers
             usr.Address = user.Address;
             usr.Lat = user.Lat;
             usr.Lng = user.Lng;
+            usr.PostCode = user.PostCode;
             usr.Rate = user.Rate;
             usr.ProfileImageHeight = user.ProfileImageHeight;
             usr.ProfileImageWidth = user.ProfileImageWidth;
@@ -1195,8 +1196,9 @@ namespace NextLevelTrainingApi.Controllers
                 Lng = x.Lng,
                 TravelMile = x.TravelMile,
                 ProfileImage = x.ProfileImage,
+                HiddenPosts = x.HiddenPosts,
                 AverageRating = x.Reviews.Count() > 0 ? (x.Reviews.Select(x => x.Rating).Sum() / x.Reviews.Count()).ToString() : "New",
-                Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id && !x.HiddenPosts.Select(h => h.PostId).Contains(z.Id)).ToList(),
+                Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id).ToList(),
                 Status = playerCoaches.Where(z => z.CoachId == x.Id).FirstOrDefault() == null ? "None" : playerCoaches.Where(z => z.CoachId == x.Id).First().Status
             }).Where(x => (x.DBSCeritificate != null && x.DBSCeritificate.Verified == true) && (x.VerificationDocument != null && x.VerificationDocument.Verified == true) && x.Rate != 0).ToList();
 
@@ -1207,6 +1209,8 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     p.MediaURL = p.MediaURL != null ? ((p.MediaURL.Contains("http://") || p.MediaURL.Contains("https:/")) ? p.MediaURL : _jwtAppSettings.AppBaseURL + p.MediaURL) : "";
                 }
+                List<Guid> ids = item.HiddenPosts.Select(x => x.PostId).ToList();
+                item.Posts = item.Posts.Where(x => !ids.Contains(x.Id)).ToList();
             }
             return coaches;
 
@@ -1995,7 +1999,7 @@ namespace NextLevelTrainingApi.Controllers
                     UserId = post.UserId,
                 }).ToList();
                 List<Guid> userIds = posts.Select(x => x.UserId).ToList();
-                var coaches = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH).Select(x => new SearchUserViewModel()
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2004,10 +2008,16 @@ namespace NextLevelTrainingApi.Controllers
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
                     ProfileImage = x.ProfileImage,
+                    DBSCeritificate = x.DBSCeritificate,
+                    Teams = x.Teams,
+                    Qualifications = x.Qualifications,
+                    TrainingLocations = x.TrainingLocations,
+                    Rate = x.Rate,
+                    VerificationDocument = x.VerificationDocument,
                     PostCode = x.PostCode
                 }).ToList();
 
-                var players = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new SearchUserViewModel()
+                var players = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2016,8 +2026,45 @@ namespace NextLevelTrainingApi.Controllers
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
                     ProfileImage = x.ProfileImage,
+                    DBSCeritificate = x.DBSCeritificate,
+                    Teams = x.Teams,
+                    Qualifications = x.Qualifications,
+                    TrainingLocations = x.TrainingLocations,
+                    Rate = x.Rate,
+                    VerificationDocument = x.VerificationDocument,
                     PostCode = x.PostCode
                 }).ToList();
+
+
+
+
+
+                foreach (var item in coaches)
+                {
+                    item.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
+                    if (item.DBSCeritificate != null)
+                    {
+                        item.DBSCeritificate.Path = string.IsNullOrEmpty(item.DBSCeritificate.Path) ? "" : _jwtAppSettings.AppBaseURL + item.DBSCeritificate.Path;
+                    }
+
+                    if (item.VerificationDocument != null)
+                    {
+                        item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
+                    }
+                }
+                foreach (var item in players)
+                {
+                    item.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
+                    if (item.DBSCeritificate != null)
+                    {
+                        item.DBSCeritificate.Path = string.IsNullOrEmpty(item.DBSCeritificate.Path) ? "" : _jwtAppSettings.AppBaseURL + item.DBSCeritificate.Path;
+                    }
+
+                    if (item.VerificationDocument != null)
+                    {
+                        item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
+                    }
+                }
 
 
                 coaches.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
@@ -2031,7 +2078,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
-                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.FullName.Contains(post.Search)).Select(x => new SearchUserViewModel()
+                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.FullName.Contains(post.Search)).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2040,8 +2087,28 @@ namespace NextLevelTrainingApi.Controllers
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
                     ProfileImage = x.ProfileImage,
+                    DBSCeritificate = x.DBSCeritificate,
+                    Teams = x.Teams,
+                    Qualifications = x.Qualifications,
+                    TrainingLocations = x.TrainingLocations,
+                    Rate = x.Rate,
+                    VerificationDocument = x.VerificationDocument,
                     PostCode = x.PostCode
                 }).ToList();
+
+                foreach (var item in users)
+                {
+                    item.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
+                    if (item.DBSCeritificate != null)
+                    {
+                        item.DBSCeritificate.Path = string.IsNullOrEmpty(item.DBSCeritificate.Path) ? "" : _jwtAppSettings.AppBaseURL + item.DBSCeritificate.Path;
+                    }
+
+                    if (item.VerificationDocument != null)
+                    {
+                        item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
+                    }
+                }
 
                 users.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 var players = users.Where(x => x.Role.ToLower() == Constants.PLAYER).ToList();
@@ -2156,6 +2223,33 @@ namespace NextLevelTrainingApi.Controllers
             var hashTags = _unitOfWork.HashTagRepository.AsQueryable().ToList();
 
             return hashTags;
+        }
+
+        [HttpGet]
+        [Route("GetCoachSummary/{CoachId}")]
+        public ActionResult<CoachSummaryViewModel> GetCoachSummary(Guid CoachId)
+        {
+            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == CoachId).ToList();
+            List<Guid> playerIds = bookings.Select(x => x.PlayerID).ToList();
+            CoachSummaryViewModel cs = new CoachSummaryViewModel();
+            cs.BookingsCount = bookings.Count(x => x.BookingStatus.ToLower() == "completed");
+            cs.TotalBookingsCount = bookings.Count();
+            cs.Players = _unitOfWork.UserRepository.FilterBy(x => playerIds.Contains(x.Id)).Select(x => new SearchUserViewModel()
+            {
+                Id = x.Id,
+                Role = x.Role,
+                Address = x.Address,
+                EmailID = x.EmailID,
+                FullName = x.FullName,
+                MobileNo = x.MobileNo,
+                ProfileImage = x.ProfileImage,
+            }).ToList();
+
+            cs.Bookings = bookings;
+
+            cs.Players.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+
+            return cs;
         }
         private void CompressImage(string path, IFormFile file)
         {

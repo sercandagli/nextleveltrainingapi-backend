@@ -7,8 +7,8 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class SearchPostResultViewModel
     {
-        public List<SearchUserViewModel> Players { get; set; }
-        public List<SearchUserViewModel> Coaches { get; set; }
+        public List<UserDataViewModel> Players { get; set; }
+        public List<UserDataViewModel> Coaches { get; set; }
         public List<PostDataViewModel> Posts { get; set; }
     }
 
