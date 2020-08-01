@@ -25,10 +25,12 @@ namespace NextLevelTrainingApi.ViewModels
         public string PaymentStatus { get; set; }
         public string TransactionID { get; set; }
         public DateTime CurrentTime { get; set; }
+        public DateTime BookingDate { get; set; }
         public string BookingStatus { get; set; }
         public DateTime? RescheduledDateTime { get; set; }
         public DateTime? CancelledDateTime { get; set; }
         public string ProfileImage { get; set; }
+        public string Address { get; set; }
         public PlayerVM Player { get; set; }
     }
 
@@ -38,6 +40,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string ProfileImage { get; set; }
         public string Achievements { get; set; }
         public string AboutUs { get; set; }
+        public string Address { get; set; }
         public List<Team> Teams { get; set; }
         public List<UpcomingMatch> UpcomingMatches { get; set; }
     }

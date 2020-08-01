@@ -1817,9 +1817,11 @@ namespace NextLevelTrainingApi.Controllers
                         Achievements = _unitOfWork.UserRepository.FindById(x.PlayerID).Achievements,
                         Teams = _unitOfWork.UserRepository.FindById(x.PlayerID).Teams,
                         UpcomingMatches = _unitOfWork.UserRepository.FindById(x.PlayerID).UpcomingMatches,
+                        Address = _unitOfWork.UserRepository.FindById(x.PlayerID).Address
                     },
                     ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
-                    CurrentTime = DateTime.Now
+                    CurrentTime = DateTime.Now,
+                    BookingDate = x.BookingDate
                 }
                 ).ToList();
 
@@ -1849,7 +1851,9 @@ namespace NextLevelTrainingApi.Controllers
                     RescheduledDateTime = x.RescheduledDateTime,
                     CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
                     ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
-                    CurrentTime = DateTime.Now
+                    CurrentTime = DateTime.Now,
+                    BookingDate = x.BookingDate,
+                    Address = _unitOfWork.UserRepository.FindById(x.CoachID).Address
                 }
                ).ToList();
 
@@ -2014,7 +2018,10 @@ namespace NextLevelTrainingApi.Controllers
                     TrainingLocations = x.TrainingLocations,
                     Rate = x.Rate,
                     VerificationDocument = x.VerificationDocument,
-                    PostCode = x.PostCode
+                    PostCode = x.PostCode,
+                    AboutUs = x.AboutUs,
+                    Achievements = x.Achievements,
+                    Accomplishment = x.Accomplishment
                 }).ToList();
 
                 var players = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new UserDataViewModel()
@@ -2032,7 +2039,10 @@ namespace NextLevelTrainingApi.Controllers
                     TrainingLocations = x.TrainingLocations,
                     Rate = x.Rate,
                     VerificationDocument = x.VerificationDocument,
-                    PostCode = x.PostCode
+                    PostCode = x.PostCode,
+                    AboutUs = x.AboutUs,
+                    Achievements = x.Achievements,
+                    Accomplishment = x.Accomplishment
                 }).ToList();
 
 
@@ -2093,7 +2103,10 @@ namespace NextLevelTrainingApi.Controllers
                     TrainingLocations = x.TrainingLocations,
                     Rate = x.Rate,
                     VerificationDocument = x.VerificationDocument,
-                    PostCode = x.PostCode
+                    PostCode = x.PostCode,
+                    AboutUs = x.AboutUs,
+                    Achievements = x.Achievements,
+                    Accomplishment = x.Accomplishment
                 }).ToList();
 
                 foreach (var item in users)
@@ -2234,7 +2247,7 @@ namespace NextLevelTrainingApi.Controllers
             CoachSummaryViewModel cs = new CoachSummaryViewModel();
             cs.BookingsCount = bookings.Count(x => x.BookingStatus.ToLower() == "completed");
             cs.TotalBookingsCount = bookings.Count();
-            cs.Players = _unitOfWork.UserRepository.FilterBy(x => playerIds.Contains(x.Id)).Select(x => new SearchUserViewModel()
+            cs.Players = _unitOfWork.UserRepository.FilterBy(x => playerIds.Contains(x.Id)).Select(x => new UserDataViewModel()
             {
                 Id = x.Id,
                 Role = x.Role,
@@ -2243,11 +2256,36 @@ namespace NextLevelTrainingApi.Controllers
                 FullName = x.FullName,
                 MobileNo = x.MobileNo,
                 ProfileImage = x.ProfileImage,
+                DBSCeritificate = x.DBSCeritificate,
+                Teams = x.Teams,
+                Qualifications = x.Qualifications,
+                TrainingLocations = x.TrainingLocations,
+                Rate = x.Rate,
+                VerificationDocument = x.VerificationDocument,
+                PostCode = x.PostCode,
+                AboutUs = x.AboutUs,
+                Achievements = x.Achievements,
+                Accomplishment = x.Accomplishment
+
             }).ToList();
 
             cs.Bookings = bookings;
 
             cs.Players.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+
+            foreach (var item in cs.Players)
+            {
+                item.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
+                if (item.DBSCeritificate != null)
+                {
+                    item.DBSCeritificate.Path = string.IsNullOrEmpty(item.DBSCeritificate.Path) ? "" : _jwtAppSettings.AppBaseURL + item.DBSCeritificate.Path;
+                }
+
+                if (item.VerificationDocument != null)
+                {
+                    item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
+                }
+            }
 
             return cs;
         }
