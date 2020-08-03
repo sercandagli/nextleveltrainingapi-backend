@@ -8,6 +8,10 @@ namespace NextLevelTrainingApi.ViewModels
 {
     public class PostViewModel
     {
+        public PostViewModel()
+        {
+            this.TaggedUserIds = new List<Guid>();
+        }
 
         public string Header { get; set; }
 
@@ -17,6 +21,6 @@ namespace NextLevelTrainingApi.ViewModels
         public string MediaURL { get; set; }
         public int NumberOfLikes { get; set; }
         public bool IsVerified { get; set; }
-
+        public List<Guid> TaggedUserIds { get; set; }
     }
 }

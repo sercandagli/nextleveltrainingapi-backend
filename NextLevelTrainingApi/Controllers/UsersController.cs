@@ -133,6 +133,13 @@ namespace NextLevelTrainingApi.Controllers
             user.Lat = profile.Lat;
             user.Lng = profile.Lng;
             _unitOfWork.UserRepository.ReplaceOne(user);
+
+            Notification notification = new Notification();
+            notification.Id = Guid.NewGuid();
+            notification.Text = "Profile updated successfully.";
+            notification.CreatedDate = DateTime.Now;
+            notification.UserId = _userContext.UserID;
+            _unitOfWork.NotificationRepository.InsertOne(notification);
             return user;
         }
 
@@ -193,6 +200,20 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         _unitOfWork.HashTagRepository.InsertOne(hashTag);
                     }
+                }
+            }
+
+            if (postVM.TaggedUserIds.Count() > 0)
+            {
+                var users = _unitOfWork.UserRepository.FilterBy(x => postVM.TaggedUserIds.Contains(x.Id)).ToList();
+                foreach (var user in users)
+                {
+                    Notification notification = new Notification();
+                    notification.Id = Guid.NewGuid();
+                    notification.Text = user.FullName + " tagged you in a post.";
+                    notification.CreatedDate = DateTime.Now;
+                    notification.UserId = user.Id;
+                    _unitOfWork.NotificationRepository.InsertOne(notification);
                 }
             }
 
@@ -1721,6 +1742,17 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
+
+            string bookDate = booking.BookingDate.ToString("yyyy-MM-dd");
+            DateTime fromTime = DateTime.ParseExact(bookDate + " " + booking.FromTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
+            DateTime toTime = DateTime.ParseExact(bookDate + " " + booking.ToTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
+
+            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == booking.CoachID && (x.FromTime >= fromTime && x.ToTime <= toTime)).ToList();
+
+            if (bookings.Count() > 0)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "Booking already exists." } } });
+            }
             var coach = user.Coaches.Where(x => x.CoachId == booking.CoachID).SingleOrDefault();
             if (coach != null)
             {
@@ -1739,7 +1771,6 @@ namespace NextLevelTrainingApi.Controllers
                 user.Coaches.Add(coach);
                 _unitOfWork.UserRepository.ReplaceOne(user);
             }
-            string bookDate = booking.BookingDate.ToString("yyyy-MM-dd");
             Booking book = new Booking();
             book.Id = Guid.NewGuid();
             book.Amount = booking.Amount;
@@ -1763,6 +1794,13 @@ namespace NextLevelTrainingApi.Controllers
             }
             _unitOfWork.BookingRepository.InsertOne(book);
 
+            Notification notification = new Notification();
+            notification.Id = Guid.NewGuid();
+            notification.Text = "Booking created successfully.";
+            notification.CreatedDate = DateTime.Now;
+            notification.UserId = booking.PlayerID;
+            _unitOfWork.NotificationRepository.InsertOne(notification);
+
             return book;
 
         }
@@ -1776,6 +1814,13 @@ namespace NextLevelTrainingApi.Controllers
             booking.BookingStatus = "Cancelled";
             booking.CancelledDateTime = DateTime.Now;
             _unitOfWork.BookingRepository.ReplaceOne(booking);
+
+            Notification notification = new Notification();
+            notification.Id = Guid.NewGuid();
+            notification.Text = "Booking cancelled successfully.";
+            notification.CreatedDate = DateTime.Now;
+            notification.UserId = _userContext.UserID;
+            _unitOfWork.NotificationRepository.InsertOne(notification);
 
             return booking;
 
@@ -1873,6 +1918,13 @@ namespace NextLevelTrainingApi.Controllers
             b.BookingStatus = "Rescheduled";
             b.RescheduledDateTime = DateTime.Now;
             _unitOfWork.BookingRepository.ReplaceOne(b);
+
+            Notification notification = new Notification();
+            notification.Id = Guid.NewGuid();
+            notification.Text = "Booking rescheduled successfully.";
+            notification.CreatedDate = DateTime.Now;
+            notification.UserId = _userContext.UserID;
+            _unitOfWork.NotificationRepository.InsertOne(notification);
 
             return b;
         }
@@ -2003,7 +2055,7 @@ namespace NextLevelTrainingApi.Controllers
                     UserId = post.UserId,
                 }).ToList();
                 List<Guid> userIds = posts.Select(x => x.UserId).ToList();
-                var coaches = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH).Select(x => new UserDataViewModel()
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2125,7 +2177,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 users.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 var players = users.Where(x => x.Role.ToLower() == Constants.PLAYER).ToList();
-                var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH).ToList();
+                var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).ToList();
 
                 List<Guid> userIds = users.Select(x => x.Id).ToList();
                 var posts = _unitOfWork.PostRepository.FilterBy(x => !hiddenPostIds.Contains(x.Id) && userIds.Contains(x.Id)).Select(post => new PostDataViewModel()
@@ -2269,6 +2321,12 @@ namespace NextLevelTrainingApi.Controllers
 
             }).ToList();
 
+            cs.Level = Convert.ToInt32(Math.Ceiling((double)bookings.Count(x => x.BookingStatus.ToLower() == "completed") / 50));
+            if (cs.Level == 0)
+            {
+                cs.Level = 1;
+            }
+
             cs.Bookings = bookings;
 
             cs.Players.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
@@ -2288,6 +2346,15 @@ namespace NextLevelTrainingApi.Controllers
             }
 
             return cs;
+        }
+
+        [HttpGet]
+        [Route("GetNotifications")]
+        public ActionResult<List<Notification>> GetNotifications()
+        {
+            var notifications = _unitOfWork.NotificationRepository.FilterBy(x => x.UserId == _userContext.UserID).ToList();
+
+            return notifications;
         }
         private void CompressImage(string path, IFormFile file)
         {

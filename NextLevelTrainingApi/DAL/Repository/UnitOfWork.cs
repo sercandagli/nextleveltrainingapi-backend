@@ -67,5 +67,11 @@ namespace NextLevelTrainingApi.DAL.Repository
             get { return hashTagRepository ?? (hashTagRepository = new GenericRepository<HashTag>(_mongoDatabase)); }
         }
 
+        private IGenericRepository<Notification> notificationRepository;
+        public IGenericRepository<Notification> NotificationRepository
+        {
+            get { return notificationRepository ?? (notificationRepository = new GenericRepository<Notification>(_mongoDatabase)); }
+        }
+
     }
 }
