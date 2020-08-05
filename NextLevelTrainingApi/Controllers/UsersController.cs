@@ -2042,7 +2042,7 @@ namespace NextLevelTrainingApi.Controllers
             bool isStartWithHash = post.Search.StartsWith("#");
             if (isStartWithHash)
             {
-                var posts = _unitOfWork.PostRepository.AsQueryable().Where(x => !hiddenPostIds.Contains(x.Id) && x.Body.Contains(post.Search)).Select(post => new PostDataViewModel()
+                var posts = _unitOfWork.PostRepository.AsQueryable().Where(x => x.Id != _userContext.UserID && !hiddenPostIds.Contains(x.Id) && x.Body.Contains(post.Search)).Select(post => new PostDataViewModel()
                 {
                     Body = post.Body,
                     CreatedDate = post.CreatedDate,
@@ -2054,8 +2054,15 @@ namespace NextLevelTrainingApi.Controllers
                     NumberOfLikes = post.NumberOfLikes,
                     UserId = post.UserId,
                 }).ToList();
+
+                foreach (var user in posts)
+                {
+                    user.ProfileImage = _unitOfWork.UserRepository.FindById(user.UserId).ProfileImage;
+                    user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
+                }
+
                 List<Guid> userIds = posts.Select(x => x.UserId).ToList();
-                var coaches = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).Select(x => new UserDataViewModel()
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Id != _userContext.UserID && userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2073,10 +2080,12 @@ namespace NextLevelTrainingApi.Controllers
                     PostCode = x.PostCode,
                     AboutUs = x.AboutUs,
                     Achievements = x.Achievements,
-                    Accomplishment = x.Accomplishment
+                    Accomplishment = x.Accomplishment,
+                    Lat = x.Lat,
+                    Lng = x.Lng
                 }).ToList();
 
-                var players = _unitOfWork.UserRepository.FilterBy(x => userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new UserDataViewModel()
+                var players = _unitOfWork.UserRepository.FilterBy(x => x.Id != _userContext.UserID && userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2094,7 +2103,9 @@ namespace NextLevelTrainingApi.Controllers
                     PostCode = x.PostCode,
                     AboutUs = x.AboutUs,
                     Achievements = x.Achievements,
-                    Accomplishment = x.Accomplishment
+                    Accomplishment = x.Accomplishment,
+                    Lat = x.Lat,
+                    Lng = x.Lng
                 }).ToList();
 
 
@@ -2140,7 +2151,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
-                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.FullName.Contains(post.Search)).Select(x => new UserDataViewModel()
+                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.Id != _userContext.UserID && (x.FullName.Contains(post.Search) || x.PostCode.Contains(post.Search))).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2158,7 +2169,9 @@ namespace NextLevelTrainingApi.Controllers
                     PostCode = x.PostCode,
                     AboutUs = x.AboutUs,
                     Achievements = x.Achievements,
-                    Accomplishment = x.Accomplishment
+                    Accomplishment = x.Accomplishment,
+                    Lat = x.Lat,
+                    Lng = x.Lng
                 }).ToList();
 
                 foreach (var item in users)
@@ -2180,7 +2193,7 @@ namespace NextLevelTrainingApi.Controllers
                 var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).ToList();
 
                 List<Guid> userIds = users.Select(x => x.Id).ToList();
-                var posts = _unitOfWork.PostRepository.FilterBy(x => !hiddenPostIds.Contains(x.Id) && userIds.Contains(x.Id)).Select(post => new PostDataViewModel()
+                var posts = _unitOfWork.PostRepository.FilterBy(x => x.Id != _userContext.UserID && !hiddenPostIds.Contains(x.Id) && userIds.Contains(x.Id)).Select(post => new PostDataViewModel()
                 {
                     Body = post.Body,
                     CreatedDate = post.CreatedDate,
@@ -2190,8 +2203,14 @@ namespace NextLevelTrainingApi.Controllers
                     Likes = post.Likes,
                     MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
                     NumberOfLikes = post.NumberOfLikes,
-                    UserId = post.UserId,
+                    UserId = post.UserId
                 }).ToList();
+
+                foreach (var user in posts)
+                {
+                    user.ProfileImage = _unitOfWork.UserRepository.FindById(user.UserId).ProfileImage;
+                    user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
+                }
 
                 SearchPostResultViewModel searchResult = new SearchPostResultViewModel();
                 searchResult.Coaches = coaches;
@@ -2237,6 +2256,17 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     user.ConnectedUsers.Add(new ConnectedUsers() { UserId = connectedUser.UserId });
                 }
+                var aUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
+                if (aUser != null)
+                {
+                    if (aUser.ConnectedUsers.Count(x => x.UserId == _userContext.UserID) == 0)
+                    {
+                        aUser.ConnectedUsers.Add(new ConnectedUsers() { UserId = _userContext.UserID });
+                    }
+                }
+                _unitOfWork.UserRepository.ReplaceOne(user);
+
+                _unitOfWork.UserRepository.ReplaceOne(aUser);
             }
             else
             {
@@ -2245,10 +2275,20 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     user.ConnectedUsers.Remove(toRemove);
                 }
+
+                var aUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
+                if (aUser != null)
+                {
+                    var toRemovee = aUser.ConnectedUsers.Where(x => x.UserId == _userContext.UserID).SingleOrDefault();
+                    if (toRemovee != null)
+                    {
+                        aUser.ConnectedUsers.Remove(toRemovee);
+                    }
+                }
+                _unitOfWork.UserRepository.ReplaceOne(user);
+
+                _unitOfWork.UserRepository.ReplaceOne(aUser);
             }
-
-
-            _unitOfWork.UserRepository.ReplaceOne(user);
 
             return true;
         }
@@ -2294,11 +2334,46 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetCoachSummary/{CoachId}")]
         public ActionResult<CoachSummaryViewModel> GetCoachSummary(Guid CoachId)
         {
-            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == CoachId).ToList();
+            DateTime midnight = DateTime.Now.Date;
+            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == CoachId).Select(x => new
+                BookingViewModel()
+            {
+                Amount = x.Amount,
+                BookingNumber = x.BookingNumber,
+                BookingStatus = x.BookingStatus,
+                CoachID = x.CoachID,
+                FromTime = x.FromTime,
+                FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
+                Id = x.Id,
+                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                TrainingLocationID = x.TrainingLocationID,
+                PaymentStatus = x.PaymentStatus,
+                PlayerID = x.PlayerID,
+                SentDate = x.SentDate,
+                ToTime = x.ToTime,
+                TransactionID = x.TransactionID,
+                CancelledDateTime = x.CancelledDateTime,
+                RescheduledDateTime = x.RescheduledDateTime,
+                CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                Player = new PlayerVM()
+                {
+                    FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
+                    ProfileImage = _unitOfWork.UserRepository.FindById(x.PlayerID).ProfileImage,
+                    AboutUs = _unitOfWork.UserRepository.FindById(x.PlayerID).AboutUs,
+                    Achievements = _unitOfWork.UserRepository.FindById(x.PlayerID).Achievements,
+                    Teams = _unitOfWork.UserRepository.FindById(x.PlayerID).Teams,
+                    UpcomingMatches = _unitOfWork.UserRepository.FindById(x.PlayerID).UpcomingMatches,
+                    Address = _unitOfWork.UserRepository.FindById(x.PlayerID).Address
+                },
+                ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
+                CurrentTime = DateTime.Now,
+                BookingDate = x.BookingDate
+            }
+                ).ToList();
             List<Guid> playerIds = bookings.Select(x => x.PlayerID).ToList();
             CoachSummaryViewModel cs = new CoachSummaryViewModel();
-            cs.BookingsCount = bookings.Count(x => x.BookingStatus.ToLower() == "completed");
-            cs.TotalBookingsCount = bookings.Count();
+            cs.BookingsCount = bookings.Where(x => x.BookingStatus.ToLower() == "done" && x.BookingDate > midnight).Select(x => x.PlayerID).Distinct().Count();
+            cs.TotalBookingsCount = bookings.Where(x => x.BookingStatus.ToLower() == "done").Select(x => x.PlayerID).Distinct().Count();
             cs.Players = _unitOfWork.UserRepository.FilterBy(x => playerIds.Contains(x.Id)).Select(x => new UserDataViewModel()
             {
                 Id = x.Id,

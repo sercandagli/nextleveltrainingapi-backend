@@ -12,6 +12,6 @@ namespace NextLevelTrainingApi.ViewModels
         public int TotalBookingsCount { get; set; }
         public int Level { get; set; }
         public List<UserDataViewModel> Players { get; set; }
-        public List<Booking> Bookings { get; set; }
+        public List<BookingViewModel> Bookings { get; set; }
     }
 }
