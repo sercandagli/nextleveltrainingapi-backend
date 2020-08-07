@@ -62,5 +62,6 @@ namespace NextLevelTrainingApi.ViewModels
         public List<Review> Reviews { get; set; }
 
         public List<UserQualification> Qualifications { get; set; }
+        public List<Post> Posts { get; set; }
     }
 }

@@ -2038,7 +2038,7 @@ namespace NextLevelTrainingApi.Controllers
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
-            List<Guid> hiddenPostIds = usr.HiddenPosts.Select(x => x.PostId).ToList();
+            List<Guid> hiddenPostIds = _unitOfWork.UserRepository.AsQueryable().SelectMany(x => x.HiddenPosts).Select(x => x.PostId).Distinct().ToList();
             bool isStartWithHash = post.Search.StartsWith("#");
             if (isStartWithHash)
             {
@@ -2057,8 +2057,10 @@ namespace NextLevelTrainingApi.Controllers
 
                 foreach (var user in posts)
                 {
-                    user.ProfileImage = _unitOfWork.UserRepository.FindById(user.UserId).ProfileImage;
+                    var pUser = _unitOfWork.UserRepository.FindById(user.UserId);
+                    user.ProfileImage = pUser.ProfileImage;
                     user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
+                    user.CreatedBy = pUser.FullName;
                 }
 
                 List<Guid> userIds = posts.Select(x => x.UserId).ToList();
@@ -2082,8 +2084,10 @@ namespace NextLevelTrainingApi.Controllers
                     Achievements = x.Achievements,
                     Accomplishment = x.Accomplishment,
                     Lat = x.Lat,
-                    Lng = x.Lng
+                    Lng = x.Lng,
+                    Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == x.Id).ToList()
                 }).ToList();
+                coaches.ForEach(user => user.Posts.ForEach(x => x.MediaURL = _jwtAppSettings.AppBaseURL + x.MediaURL));
 
                 var players = _unitOfWork.UserRepository.FilterBy(x => x.Id != _userContext.UserID && userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new UserDataViewModel()
                 {
@@ -2171,7 +2175,8 @@ namespace NextLevelTrainingApi.Controllers
                     Achievements = x.Achievements,
                     Accomplishment = x.Accomplishment,
                     Lat = x.Lat,
-                    Lng = x.Lng
+                    Lng = x.Lng,
+                    Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == x.Id).ToList()
                 }).ToList();
 
                 foreach (var item in users)
@@ -2189,6 +2194,7 @@ namespace NextLevelTrainingApi.Controllers
                 }
 
                 users.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+                users.ForEach(user => user.Posts.ForEach(x => x.MediaURL = _jwtAppSettings.AppBaseURL + x.MediaURL));
                 var players = users.Where(x => x.Role.ToLower() == Constants.PLAYER).ToList();
                 var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).ToList();
 
@@ -2208,8 +2214,10 @@ namespace NextLevelTrainingApi.Controllers
 
                 foreach (var user in posts)
                 {
-                    user.ProfileImage = _unitOfWork.UserRepository.FindById(user.UserId).ProfileImage;
+                    var pUser = _unitOfWork.UserRepository.FindById(user.UserId);
+                    user.ProfileImage = pUser.ProfileImage;
                     user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
+                    user.CreatedBy = pUser.FullName;
                 }
 
                 SearchPostResultViewModel searchResult = new SearchPostResultViewModel();
@@ -2255,6 +2263,13 @@ namespace NextLevelTrainingApi.Controllers
                 if (user.ConnectedUsers.Count(x => x.UserId == connectedUser.UserId) == 0)
                 {
                     user.ConnectedUsers.Add(new ConnectedUsers() { UserId = connectedUser.UserId });
+                    Notification notification = new Notification();
+                    notification.Id = Guid.NewGuid();
+                    notification.Text = "Connected with " + user.FullName + " successfully.";
+                    notification.CreatedDate = DateTime.Now;
+                    notification.UserId = connectedUser.UserId;
+                    _unitOfWork.NotificationRepository.InsertOne(notification);
+
                 }
                 var aUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
                 if (aUser != null)
@@ -2262,6 +2277,12 @@ namespace NextLevelTrainingApi.Controllers
                     if (aUser.ConnectedUsers.Count(x => x.UserId == _userContext.UserID) == 0)
                     {
                         aUser.ConnectedUsers.Add(new ConnectedUsers() { UserId = _userContext.UserID });
+                        Notification notification = new Notification();
+                        notification.Id = Guid.NewGuid();
+                        notification.Text = "Connected with " + aUser.FullName + " successfully.";
+                        notification.CreatedDate = DateTime.Now;
+                        notification.UserId = user.Id;
+                        _unitOfWork.NotificationRepository.InsertOne(notification);
                     }
                 }
                 _unitOfWork.UserRepository.ReplaceOne(user);
@@ -2274,6 +2295,13 @@ namespace NextLevelTrainingApi.Controllers
                 if (toRemove != null)
                 {
                     user.ConnectedUsers.Remove(toRemove);
+
+                    Notification notification = new Notification();
+                    notification.Id = Guid.NewGuid();
+                    notification.Text = "Disconnected with " + user.FullName + " successfully.";
+                    notification.CreatedDate = DateTime.Now;
+                    notification.UserId = connectedUser.UserId;
+                    _unitOfWork.NotificationRepository.InsertOne(notification);
                 }
 
                 var aUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
@@ -2283,6 +2311,13 @@ namespace NextLevelTrainingApi.Controllers
                     if (toRemovee != null)
                     {
                         aUser.ConnectedUsers.Remove(toRemovee);
+
+                        Notification notification = new Notification();
+                        notification.Id = Guid.NewGuid();
+                        notification.Text = "Disconnected with " + aUser.FullName + " successfully.";
+                        notification.CreatedDate = DateTime.Now;
+                        notification.UserId = user.Id;
+                        _unitOfWork.NotificationRepository.InsertOne(notification);
                     }
                 }
                 _unitOfWork.UserRepository.ReplaceOne(user);
