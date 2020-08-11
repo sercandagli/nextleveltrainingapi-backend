@@ -37,6 +37,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string Address { get; set; }
 
         public string EmailID { get; set; }
+        public string DeviceID { get; set; }
 
         public string MobileNo { get; set; }
         public string PostCode { get; set; }

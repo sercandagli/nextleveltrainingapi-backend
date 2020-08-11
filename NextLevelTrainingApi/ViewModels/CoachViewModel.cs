@@ -31,6 +31,7 @@ namespace NextLevelTrainingApi.ViewModels
         public List<Availability> Availabilities { get; set; }
         public List<TrainingLocation> TrainingLocations { get; set; }
         public List<Post> Posts { get; set; }
+        public List<Booking> Bookings { get; set; }
 
         public List<HiddenPosts> HiddenPosts { get; set; }
     }

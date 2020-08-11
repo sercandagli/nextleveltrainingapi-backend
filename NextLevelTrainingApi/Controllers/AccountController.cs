@@ -54,7 +54,8 @@ namespace NextLevelTrainingApi.Controllers
                 Password = userVM.Password.Encrypt(),
                 Lat = userVM.Lat,
                 Lng = userVM.Lng,
-                PostCode = userVM.PostCode
+                PostCode = userVM.PostCode,
+                DeviceID = userVM.DeviceID
             };
 
             _unitOfWork.UserRepository.InsertOne(user);
@@ -144,6 +145,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.Role = loginModel.Role;
                 user.PostCode = loginModel.PostCode;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
+                user.DeviceID = loginModel.DeviceID;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -170,6 +172,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.EmailID = fbUserVM.Email;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
+                user.DeviceID = loginModel.DeviceID;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -227,6 +230,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.GOOGLE_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
+                user.DeviceID = loginModel.DeviceID;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -247,6 +251,7 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 user.FullName = loginModel.Name;
                 user.AccessToken = loginModel.AuthenticationToken;
+                user.DeviceID = loginModel.DeviceID;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -263,6 +268,47 @@ namespace NextLevelTrainingApi.Controllers
             string encryptedToken = GenerateToken(user);
 
             return encryptedToken;
+        }
+
+        [Route("ResetPassword")]
+        [HttpPost]
+        public ActionResult<bool> ResetPassword(ResetPasswordViewModel loginModel)
+        {
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID == loginModel.EmailID).SingleOrDefault();
+            if (user == null)
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "No User found." } } });
+            }
+            string pwd = GenerateRandomString();
+            user.Password = pwd.Encrypt();
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            EmailHelper.SendEmail(user.EmailID, _emailSettings, "resetpassword", pwd);
+            return true;
+        }
+
+        private string GenerateRandomString()
+        {
+            Random ran = new Random();
+
+            String b = "abcdefghijklmnopqrstuvwxyz0123456789";
+            String sc = "!@#$%^&*~";
+
+            int length = 6;
+
+            String random = "";
+
+            for (int i = 0; i < length; i++)
+            {
+                int a = ran.Next(b.Length); //string.Lenght gets the size of string
+                random = random + b.ElementAt(a);
+            }
+            for (int j = 0; j < 2; j++)
+            {
+                int sz = ran.Next(sc.Length);
+                random = random + sc.ElementAt(sz);
+            }
+            return random;
         }
     }
 }

@@ -17,7 +17,7 @@ namespace NextLevelTrainingApi.ViewModels
         public DateTime ToTime { get; set; }
         public DateTime SentDate { get; set; }
         public string FullName { get; set; }
-       
+
         public TrainingLocation Location { get; set; }
 
         public Guid TrainingLocationID { get; set; }
@@ -32,6 +32,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string ProfileImage { get; set; }
         public string Address { get; set; }
         public PlayerVM Player { get; set; }
+        public List<BookingReviewViewModel> BookingReviews { get; set; }
     }
 
     public class PlayerVM

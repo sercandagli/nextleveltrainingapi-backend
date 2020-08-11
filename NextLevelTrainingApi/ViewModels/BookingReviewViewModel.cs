@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace NextLevelTrainingApi.DAL.Entities
+namespace NextLevelTrainingApi.ViewModels
 {
-    public class Review
+    public class BookingReviewViewModel
     {
-        public Guid Id { get; set; }
+        public Guid? Id { get; set; }
         public Guid PlayerId { get; set; }
+        public Guid BookingId { get; set; }
         public int Rating { get; set; }
         public string Feedback { get; set; }
-        public DateTime CreatedDate { get; set; }
     }
 }

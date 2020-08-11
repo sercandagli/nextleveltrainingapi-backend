@@ -11,6 +11,9 @@ namespace NextLevelTrainingApi.ViewModels
         [Required]
         public string Role { get; set; }
         [Required]
+        public string DeviceID { get; set; }
+
+        [Required]
         public string AuthenticationToken { get; set; }
         [Required]
         public string PostCode { get; set; }

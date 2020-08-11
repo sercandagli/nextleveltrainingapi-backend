@@ -22,6 +22,7 @@ namespace NextLevelTrainingApi.ViewModels
         }
 
         public Guid Id { get; set; }
+        public string DeviceID { get; set; }
 
         public string FullName { get; set; }
 

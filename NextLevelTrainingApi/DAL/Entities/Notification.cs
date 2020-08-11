@@ -15,6 +15,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public Guid Id { get; set; }
         public string Text { get; set; }
         public Guid UserId { get; set; }
+        public bool IsRead { get; set; }
         public DateTime CreatedDate { get; set; }
     }
 }

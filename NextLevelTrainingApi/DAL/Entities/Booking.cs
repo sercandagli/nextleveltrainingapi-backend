@@ -11,6 +11,10 @@ namespace NextLevelTrainingApi.DAL.Entities
     [BsonCollection("Bookings")]
     public class Booking : IDocument
     {
+        public Booking()
+        {
+            this.Reviews = new List<Review>();
+        }
         [BsonId]
         public Guid Id { get; set; }
         public Guid PlayerID { get; set; }
@@ -26,6 +30,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string PaymentStatus { get; set; }
         public string TransactionID { get; set; }
         public string BookingStatus { get; set; }
+        public List<Review> Reviews { get; set; }
         public DateTime? RescheduledDateTime { get; set; }
         public DateTime? CancelledDateTime { get; set; }
     }
