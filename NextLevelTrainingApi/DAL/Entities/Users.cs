@@ -48,7 +48,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string SocialLoginType { get; set; }
         public int? ProfileImageHeight { get; set; }
         public int? ProfileImageWidth { get; set; }
-
+        public bool IsTempPassword { get; set; }
         public string Role { get; set; }
         public string ProfileImage { get; set; }
         public string Achievements { get; set; }

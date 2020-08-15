@@ -12,5 +12,8 @@ namespace NextLevelTrainingApi.ViewModels
         public Guid BookingId { get; set; }
         public int Rating { get; set; }
         public string Feedback { get; set; }
+        public string PlayerProfileImage { get; set; }
+        public string PlayerName { get; set; }
+        public DateTime CreatedDate { get; set; }
     }
 }

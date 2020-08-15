@@ -33,6 +33,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string Address { get; set; }
         public PlayerVM Player { get; set; }
         public List<BookingReviewViewModel> BookingReviews { get; set; }
+        public List<BookingStatusViewModel> Statuses { get; set; }
     }
 
     public class PlayerVM

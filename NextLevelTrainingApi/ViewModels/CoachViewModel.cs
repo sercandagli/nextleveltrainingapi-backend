@@ -14,6 +14,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string EmailID { get; set; }
         public string MobileNo { get; set; }
         public string Achievements { get; set; }
+        public string AverageBookingRating { get; set; }
         public string ProfileImage { get; set; }
         public string Accomplishment { get; set; }
         public string Status { get; set; }
@@ -31,7 +32,7 @@ namespace NextLevelTrainingApi.ViewModels
         public List<Availability> Availabilities { get; set; }
         public List<TrainingLocation> TrainingLocations { get; set; }
         public List<Post> Posts { get; set; }
-        public List<Booking> Bookings { get; set; }
+        public List<BookingViewModel> Bookings { get; set; }
 
         public List<HiddenPosts> HiddenPosts { get; set; }
     }

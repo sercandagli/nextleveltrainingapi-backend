@@ -281,6 +281,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             string pwd = GenerateRandomString();
             user.Password = pwd.Encrypt();
+            user.IsTempPassword = true;
             _unitOfWork.UserRepository.ReplaceOne(user);
 
             EmailHelper.SendEmail(user.EmailID, _emailSettings, "resetpassword", pwd);

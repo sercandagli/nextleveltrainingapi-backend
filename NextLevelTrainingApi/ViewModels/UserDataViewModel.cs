@@ -19,11 +19,15 @@ namespace NextLevelTrainingApi.ViewModels
             this.TravelPostCodes = new List<TravelPostCode>();
             this.Reviews = new List<Review>();
             this.Qualifications = new List<UserQualification>();
+            this.Posts = new List<PostDataViewModel>();
+            this.Teams = new List<Team>();
+            this.HiddenPosts = new List<HiddenPosts>();
+            this.Bookings = new List<BookingViewModel>();
         }
 
         public Guid Id { get; set; }
         public string DeviceID { get; set; }
-
+        public bool IsTempPassword { get; set; }
         public string FullName { get; set; }
 
         public string PostCode { get; set; }
@@ -49,8 +53,10 @@ namespace NextLevelTrainingApi.ViewModels
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }
         public int Rate { get; set; }
+        public string AverageBookingRating { get; set; }
         public TravelMiles TravelMile { get; set; }
         public BankAccount BankAccount { get; set; }
+        public List<HiddenPosts> HiddenPosts { get; set; }
         public List<Experience> Experiences { get; set; }
         public List<TravelPostCode> TravelPostCodes { get; set; }
         public List<AvailabilityViewModel> Availabilities { get; set; }
@@ -63,6 +69,7 @@ namespace NextLevelTrainingApi.ViewModels
         public List<Review> Reviews { get; set; }
 
         public List<UserQualification> Qualifications { get; set; }
-        public List<Post> Posts { get; set; }
+        public List<PostDataViewModel> Posts { get; set; }
+        public List<BookingViewModel> Bookings { get; set; }
     }
 }

@@ -25,6 +25,7 @@ using Microsoft.Extensions.Options;
 using System.Globalization;
 using System.Drawing.Imaging;
 using System.Drawing;
+using System.Text.RegularExpressions;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -65,6 +66,7 @@ namespace NextLevelTrainingApi.Controllers
             usr.AboutUs = user.AboutUs;
             usr.AccessToken = user.AccessToken;
             usr.Accomplishment = user.Accomplishment;
+            usr.IsTempPassword = user.IsTempPassword;
             usr.Address = user.Address;
             usr.Lat = user.Lat;
             usr.Lng = user.Lng;
@@ -76,6 +78,47 @@ namespace NextLevelTrainingApi.Controllers
             usr.Role = user.Role;
             usr.MobileNo = user.MobileNo;
             usr.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
+            usr.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == usr.Id).Select(x => new
+                   BookingViewModel()
+            {
+                Amount = x.Amount,
+                BookingNumber = x.BookingNumber,
+                BookingStatus = x.BookingStatus,
+                CoachID = x.CoachID,
+                FromTime = x.FromTime,
+                FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
+                Id = x.Id,
+                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                TrainingLocationID = x.TrainingLocationID,
+                PaymentStatus = x.PaymentStatus,
+                PlayerID = x.PlayerID,
+                SentDate = x.SentDate,
+                ToTime = x.ToTime,
+                TransactionID = x.TransactionID,
+                CancelledDateTime = x.CancelledDateTime,
+                RescheduledDateTime = x.RescheduledDateTime,
+                CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
+                BookingDate = x.BookingDate,
+                BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
+                {
+                    BookingId = x.Id,
+                    Feedback = b.Feedback,
+                    Id = b.Id,
+                    PlayerId = b.PlayerId,
+                    Rating = b.Rating,
+                    PlayerProfileImage = _unitOfWork.UserRepository.FindById(b.PlayerId).ProfileImage,
+                    PlayerName = _unitOfWork.UserRepository.FindById(b.PlayerId).FullName,
+                    CreatedDate = b.CreatedDate
+                }).ToList()
+            }
+                ).ToList();
+
+            usr.Bookings.ForEach(b => b.BookingReviews.ForEach(r => r.PlayerProfileImage = string.IsNullOrEmpty(r.PlayerProfileImage) ? "" : ((r.PlayerProfileImage.Contains("http://") || r.PlayerProfileImage.Contains("https://")) ? r.PlayerProfileImage : _jwtAppSettings.AppBaseURL + r.PlayerProfileImage)));
+
+            int total = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == usr.Id).SelectMany(r => r.Reviews).Sum(x => x.Rating);
+            int count = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == usr.Id).SelectMany(r => r.Reviews).Count();
+            usr.AverageBookingRating = count == 0 ? "New" : (total / count).ToString();
 
             List<AvailabilityViewModel> availaibilities = new List<AvailabilityViewModel>();
             foreach (var avail in user.Availabilities)
@@ -115,6 +158,29 @@ namespace NextLevelTrainingApi.Controllers
 
             usr.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
 
+            List<Guid> hiddenPostIds = user.HiddenPosts.Select(x => x.PostId).ToList();
+            var posts = _unitOfWork.PostRepository.FilterBy(x => x.UserId == usr.Id && !hiddenPostIds.Contains(x.Id)).Select(post => new PostDataViewModel()
+            {
+                Body = post.Body,
+                CreatedDate = post.CreatedDate,
+                Header = post.Header,
+                Id = post.Id,
+                IsVerified = post.IsVerified,
+                Likes = post.Likes,
+                MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                NumberOfLikes = post.NumberOfLikes,
+                UserId = post.UserId
+            }).ToList();
+
+            foreach (var p in posts)
+            {
+                var pUser = _unitOfWork.UserRepository.FindById(p.UserId);
+                p.ProfileImage = pUser.ProfileImage;
+                p.ProfileImage = string.IsNullOrEmpty(p.ProfileImage) ? "" : ((p.ProfileImage.Contains("http://") || p.ProfileImage.Contains("https://")) ? p.ProfileImage : _jwtAppSettings.AppBaseURL + p.ProfileImage);
+                p.CreatedBy = pUser.FullName;
+            }
+
+            usr.Posts = posts;
             return usr;
         }
 
@@ -158,6 +224,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             if (password.OldPassword.Encrypt() == user.Password)
             {
+                user.IsTempPassword = false;
                 user.Password = password.NewPassword.Encrypt();
                 _unitOfWork.UserRepository.ReplaceOne(user);
             }
@@ -995,9 +1062,12 @@ namespace NextLevelTrainingApi.Controllers
             if (file == null || file.File.Length == 0)
                 return Content("file not selected");
 
-            string[] data = file.File.FileName.Split('.');
+            String ret = Regex.Replace(file.File.FileName.Trim(), "[^A-Za-z0-9_. ]+", "");
+            string fName = ret.Replace(" ", String.Empty);
+            string extension = Path.GetExtension(fName);
+            string[] data = fName.Split(extension);
             string baseUrl = _jwtAppSettings.AppBaseURL;
-            string newFileName = data[0] + "-" + Guid.NewGuid().ToString() + "." + data[1];
+            string newFileName = data[0] + "-" + Guid.NewGuid().ToString() + extension;
             if (file.Type.ToLower() == "post")
             {
                 var path = Path.Combine(
@@ -1224,11 +1294,48 @@ namespace NextLevelTrainingApi.Controllers
                 AverageRating = x.Reviews.Count() > 0 ? (x.Reviews.Select(x => x.Rating).Sum() / x.Reviews.Count()).ToString() : "New",
                 Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id).ToList(),
                 Status = playerCoaches.Where(z => z.CoachId == x.Id).FirstOrDefault() == null ? "None" : playerCoaches.Where(z => z.CoachId == x.Id).First().Status,
-                Bookings = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == x.Id).ToList()
+                //Bookings = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == x.Id).ToList()
             }).Where(x => (x.DBSCeritificate != null && x.DBSCeritificate.Verified == true) && (x.VerificationDocument != null && x.VerificationDocument.Verified == true) && x.Rate != 0).ToList();
 
             foreach (var item in coaches)
             {
+                item.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id).Select(x => new
+                  BookingViewModel()
+                {
+                    Amount = x.Amount,
+                    BookingNumber = x.BookingNumber,
+                    BookingStatus = x.BookingStatus,
+                    CoachID = x.CoachID,
+                    FromTime = x.FromTime,
+                    FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
+                    Id = x.Id,
+                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                    TrainingLocationID = x.TrainingLocationID,
+                    PaymentStatus = x.PaymentStatus,
+                    PlayerID = x.PlayerID,
+                    SentDate = x.SentDate,
+                    ToTime = x.ToTime,
+                    TransactionID = x.TransactionID,
+                    CancelledDateTime = x.CancelledDateTime,
+                    RescheduledDateTime = x.RescheduledDateTime,
+                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                    ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
+                    BookingDate = x.BookingDate,
+                    BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
+                    {
+                        BookingId = x.Id,
+                        Feedback = b.Feedback,
+                        Id = b.Id,
+                        PlayerId = b.PlayerId,
+                        Rating = b.Rating,
+                        PlayerProfileImage = _unitOfWork.UserRepository.FindById(b.PlayerId).ProfileImage,
+                        PlayerName = _unitOfWork.UserRepository.FindById(b.PlayerId).FullName,
+                        CreatedDate = b.CreatedDate
+                    }).ToList()
+                }
+                ).ToList();
+
+                item.Bookings.ForEach(b => b.BookingReviews.ForEach(x => x.PlayerProfileImage = x.PlayerProfileImage != null ? ((x.PlayerProfileImage.Contains("http://") || x.PlayerProfileImage.Contains("https:/")) ? x.PlayerProfileImage : _jwtAppSettings.AppBaseURL + x.PlayerProfileImage) : ""));
                 item.ProfileImage = item.ProfileImage != null ? ((item.ProfileImage.Contains("http://") || item.ProfileImage.Contains("https:/")) ? item.ProfileImage : _jwtAppSettings.AppBaseURL + item.ProfileImage) : "";
                 foreach (var p in item.Posts)
                 {
@@ -1236,6 +1343,10 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 List<Guid> ids = item.HiddenPosts.Select(x => x.PostId).ToList();
                 item.Posts = item.Posts.Where(x => !ids.Contains(x.Id)).ToList();
+
+                int total = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Sum(x => x.Rating);
+                int count = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Count();
+                item.AverageBookingRating = count == 0 ? "New" : (total / count).ToString();
             }
             return coaches;
 
@@ -1824,6 +1935,7 @@ namespace NextLevelTrainingApi.Controllers
             _unitOfWork.NotificationRepository.InsertOne(notification);
 
             var usr = _unitOfWork.UserRepository.FindById(booking.PlayerID);
+
             EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", booking.BookingDate.ToString("dd MMM yyyy") + " " + booking.FromTime + " - " + booking.ToTime);
             return book;
 
@@ -1899,13 +2011,38 @@ namespace NextLevelTrainingApi.Controllers
                         Feedback = b.Feedback,
                         Id = b.Id,
                         PlayerId = b.PlayerId,
-                        Rating = b.Rating
+                        Rating = b.Rating,
+                        PlayerProfileImage = _unitOfWork.UserRepository.FindById(b.PlayerId).ProfileImage,
+                        CreatedDate = b.CreatedDate
                     }).ToList()
                 }
                 ).ToList();
 
                 bookings.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 bookings.ForEach(user => user.Player.ProfileImage = string.IsNullOrEmpty(user.Player.ProfileImage) ? "" : ((user.Player.ProfileImage.Contains("http://") || user.Player.ProfileImage.Contains("https://")) ? user.Player.ProfileImage : _jwtAppSettings.AppBaseURL + user.Player.ProfileImage));
+
+                foreach (var book in bookings)
+                {
+                    List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
+                    statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
+                    if (book.RescheduledDateTime != null)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                    }
+                    if (DateTime.Now.Date == book.BookingDate.Date)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
+                    }
+                    if (DateTime.Now.Date > book.BookingDate.Date)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
+                    }
+                    if (book.CancelledDateTime != null)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
+                    }
+                    book.Statuses = statuses;
+                }
             }
             else
             {
@@ -1939,12 +2076,36 @@ namespace NextLevelTrainingApi.Controllers
                         Feedback = b.Feedback,
                         Id = b.Id,
                         PlayerId = b.PlayerId,
-                        Rating = b.Rating
+                        Rating = b.Rating,
+                        CreatedDate = b.CreatedDate
                     }).ToList()
                 }
                ).ToList();
 
                 bookings.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+
+                foreach (var book in bookings)
+                {
+                    List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
+                    statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
+                    if (book.RescheduledDateTime != null)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                    }
+                    if (DateTime.Now.Date == book.BookingDate.Date)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
+                    }
+                    if (DateTime.Now.Date > book.BookingDate.Date)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
+                    }
+                    if (book.CancelledDateTime != null)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
+                    }
+                    book.Statuses = statuses;
+                }
             }
             return bookings;
         }
@@ -1993,13 +2154,35 @@ namespace NextLevelTrainingApi.Controllers
                     Feedback = b.Feedback,
                     Id = b.Id,
                     PlayerId = b.PlayerId,
-                    Rating = b.Rating
+                    Rating = b.Rating,
+                    CreatedDate = b.CreatedDate
                 }).ToList()
             }
             ).SingleOrDefault();
 
             booking.ProfileImage = string.IsNullOrEmpty(booking.ProfileImage) ? "" : ((booking.ProfileImage.Contains("http://") || booking.ProfileImage.Contains("https://")) ? booking.ProfileImage : _jwtAppSettings.AppBaseURL + booking.ProfileImage);
             booking.Player.ProfileImage = string.IsNullOrEmpty(booking.Player.ProfileImage) ? "" : ((booking.Player.ProfileImage.Contains("http://") || booking.Player.ProfileImage.Contains("https://")) ? booking.Player.ProfileImage : _jwtAppSettings.AppBaseURL + booking.Player.ProfileImage);
+
+            List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
+            statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate });
+            if (booking.RescheduledDateTime != null)
+            {
+                statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = booking.RescheduledDateTime.Value });
+            }
+            if (DateTime.Now.Date == booking.BookingDate.Date)
+            {
+                statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = booking.BookingDate });
+            }
+            if (DateTime.Now.Date > booking.BookingDate.Date)
+            {
+                statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = booking.BookingDate });
+            }
+            if (booking.CancelledDateTime != null)
+            {
+                statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = booking.CancelledDateTime.Value });
+            }
+
+            booking.Statuses = statuses;
 
             return booking;
         }
@@ -2141,7 +2324,7 @@ namespace NextLevelTrainingApi.Controllers
             bool isStartWithHash = post.Search.StartsWith("#");
             if (isStartWithHash)
             {
-                var posts = _unitOfWork.PostRepository.AsQueryable().Where(x => x.Id != _userContext.UserID && !hiddenPostIds.Contains(x.Id) && x.Body.Contains(post.Search)).Select(post => new PostDataViewModel()
+                var posts = _unitOfWork.PostRepository.AsQueryable().Where(x => x.UserId != _userContext.UserID && !hiddenPostIds.Contains(x.Id) && x.Body.Contains(post.Search)).Select(post => new PostDataViewModel()
                 {
                     Body = post.Body,
                     CreatedDate = post.CreatedDate,
@@ -2184,9 +2367,48 @@ namespace NextLevelTrainingApi.Controllers
                     Accomplishment = x.Accomplishment,
                     Lat = x.Lat,
                     Lng = x.Lng,
-                    Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == x.Id).ToList()
+                    TravelMile = x.TravelMile,
+                    HiddenPosts = x.HiddenPosts,
+                    // Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == x.Id).ToList()
+                    //Bookings = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == x.Id).ToList()
                 }).ToList();
                 coaches.ForEach(user => user.Posts.ForEach(x => x.MediaURL = _jwtAppSettings.AppBaseURL + x.MediaURL));
+                coaches.ForEach(user => user.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == user.Id).Select(x => new
+                 BookingViewModel()
+                {
+                    Amount = x.Amount,
+                    BookingNumber = x.BookingNumber,
+                    BookingStatus = x.BookingStatus,
+                    CoachID = x.CoachID,
+                    FromTime = x.FromTime,
+                    FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
+                    Id = x.Id,
+                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                    TrainingLocationID = x.TrainingLocationID,
+                    PaymentStatus = x.PaymentStatus,
+                    PlayerID = x.PlayerID,
+                    SentDate = x.SentDate,
+                    ToTime = x.ToTime,
+                    TransactionID = x.TransactionID,
+                    CancelledDateTime = x.CancelledDateTime,
+                    RescheduledDateTime = x.RescheduledDateTime,
+                    CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                    ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
+                    BookingDate = x.BookingDate,
+                    BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
+                    {
+                        BookingId = x.Id,
+                        Feedback = b.Feedback,
+                        Id = b.Id,
+                        PlayerId = b.PlayerId,
+                        Rating = b.Rating,
+                        PlayerProfileImage = _unitOfWork.UserRepository.FindById(b.PlayerId).ProfileImage,
+                        PlayerName = _unitOfWork.UserRepository.FindById(b.PlayerId).FullName,
+                        CreatedDate = b.CreatedDate
+                    }).ToList()
+                }
+                ).ToList());
+                coaches.ForEach(x => x.Bookings.ForEach(b => b.BookingReviews.ForEach(x => x.PlayerProfileImage = x.PlayerProfileImage != null ? ((x.PlayerProfileImage.Contains("http://") || x.PlayerProfileImage.Contains("https:/")) ? x.PlayerProfileImage : _jwtAppSettings.AppBaseURL + x.PlayerProfileImage) : "")));
 
                 var players = _unitOfWork.UserRepository.FilterBy(x => x.Id != _userContext.UserID && userIds.Contains(x.Id) && x.Role.ToLower() == Constants.PLAYER).Select(x => new UserDataViewModel()
                 {
@@ -2226,6 +2448,33 @@ namespace NextLevelTrainingApi.Controllers
                     if (item.VerificationDocument != null)
                     {
                         item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
+                    }
+                    int total = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Sum(x => x.Rating);
+                    int count = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Count();
+                    item.AverageBookingRating = count == 0 ? "New" : (total / count).ToString();
+                    item.Bookings.ForEach(b => b.BookingReviews.ForEach(r => r.PlayerProfileImage = string.IsNullOrEmpty(r.PlayerProfileImage) ? "" : ((r.PlayerProfileImage.Contains("http://") || r.PlayerProfileImage.Contains("https://")) ? r.PlayerProfileImage : _jwtAppSettings.AppBaseURL + r.PlayerProfileImage)));
+
+
+                    List<Guid> hPostIds = item.HiddenPosts.Select(x => x.PostId).ToList();
+                    var psts = _unitOfWork.PostRepository.FilterBy(x => x.UserId == item.Id && !hPostIds.Contains(x.Id)).Select(post => new PostDataViewModel()
+                    {
+                        Body = post.Body,
+                        CreatedDate = post.CreatedDate,
+                        Header = post.Header,
+                        Id = post.Id,
+                        IsVerified = post.IsVerified,
+                        Likes = post.Likes,
+                        MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                        NumberOfLikes = post.NumberOfLikes,
+                        UserId = post.UserId
+                    }).ToList();
+
+                    foreach (var p in psts)
+                    {
+                        var pUser = _unitOfWork.UserRepository.FindById(p.UserId);
+                        p.ProfileImage = pUser.ProfileImage;
+                        p.ProfileImage = string.IsNullOrEmpty(p.ProfileImage) ? "" : ((p.ProfileImage.Contains("http://") || p.ProfileImage.Contains("https://")) ? p.ProfileImage : _jwtAppSettings.AppBaseURL + p.ProfileImage);
+                        p.CreatedBy = pUser.FullName;
                     }
                 }
                 foreach (var item in players)
@@ -2274,11 +2523,47 @@ namespace NextLevelTrainingApi.Controllers
                     Achievements = x.Achievements,
                     Accomplishment = x.Accomplishment,
                     Lat = x.Lat,
-                    Lng = x.Lng
+                    Lng = x.Lng,
+                    TravelMile = x.TravelMile
                 }).ToList();
 
                 foreach (var item in users)
                 {
+                    item.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id).Select(x => new
+                BookingViewModel()
+                    {
+                        Amount = x.Amount,
+                        BookingNumber = x.BookingNumber,
+                        BookingStatus = x.BookingStatus,
+                        CoachID = x.CoachID,
+                        FromTime = x.FromTime,
+                        FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
+                        Id = x.Id,
+                        Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                        TrainingLocationID = x.TrainingLocationID,
+                        PaymentStatus = x.PaymentStatus,
+                        PlayerID = x.PlayerID,
+                        SentDate = x.SentDate,
+                        ToTime = x.ToTime,
+                        TransactionID = x.TransactionID,
+                        CancelledDateTime = x.CancelledDateTime,
+                        RescheduledDateTime = x.RescheduledDateTime,
+                        CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
+                        ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
+                        BookingDate = x.BookingDate,
+                        BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
+                        {
+                            BookingId = x.Id,
+                            Feedback = b.Feedback,
+                            Id = b.Id,
+                            PlayerId = b.PlayerId,
+                            Rating = b.Rating,
+                            PlayerProfileImage = _unitOfWork.UserRepository.FindById(b.PlayerId).ProfileImage,
+                            PlayerName = _unitOfWork.UserRepository.FindById(b.PlayerId).FullName,
+                            CreatedDate = b.CreatedDate
+                        }).ToList()
+                    }
+               ).ToList();
                     item.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
                     if (item.DBSCeritificate != null)
                     {
@@ -2289,7 +2574,7 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
                     }
-                    item.Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == item.Id).ToList();
+                    //item.Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == item.Id).ToList();
                 }
 
                 users.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
@@ -2297,8 +2582,39 @@ namespace NextLevelTrainingApi.Controllers
                 var players = users.Where(x => x.Role.ToLower() == Constants.PLAYER).ToList();
                 var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).ToList();
 
+                coaches.ForEach(x => x.Bookings.ForEach(b => b.BookingReviews.ForEach(x => x.PlayerProfileImage = x.PlayerProfileImage != null ? ((x.PlayerProfileImage.Contains("http://") || x.PlayerProfileImage.Contains("https:/")) ? x.PlayerProfileImage : _jwtAppSettings.AppBaseURL + x.PlayerProfileImage) : "")));
+                foreach (var item in coaches)
+                {
+                    int total = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Sum(x => x.Rating);
+                    int count = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Count();
+                    item.AverageBookingRating = count == 0 ? "New" : (total / count).ToString();
+                    item.Bookings.ForEach(b => b.BookingReviews.ForEach(r => r.PlayerProfileImage = string.IsNullOrEmpty(r.PlayerProfileImage) ? "" : ((r.PlayerProfileImage.Contains("http://") || r.PlayerProfileImage.Contains("https://")) ? r.PlayerProfileImage : _jwtAppSettings.AppBaseURL + r.PlayerProfileImage)));
+
+                    List<Guid> hPostIds = item.HiddenPosts.Select(x => x.PostId).ToList();
+                    var psts = _unitOfWork.PostRepository.FilterBy(x => x.UserId == item.Id && !hPostIds.Contains(x.Id)).Select(post => new PostDataViewModel()
+                    {
+                        Body = post.Body,
+                        CreatedDate = post.CreatedDate,
+                        Header = post.Header,
+                        Id = post.Id,
+                        IsVerified = post.IsVerified,
+                        Likes = post.Likes,
+                        MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                        NumberOfLikes = post.NumberOfLikes,
+                        UserId = post.UserId
+                    }).ToList();
+
+                    foreach (var p in psts)
+                    {
+                        var pUser = _unitOfWork.UserRepository.FindById(p.UserId);
+                        p.ProfileImage = pUser.ProfileImage;
+                        p.ProfileImage = string.IsNullOrEmpty(p.ProfileImage) ? "" : ((p.ProfileImage.Contains("http://") || p.ProfileImage.Contains("https://")) ? p.ProfileImage : _jwtAppSettings.AppBaseURL + p.ProfileImage);
+                        p.CreatedBy = pUser.FullName;
+                    }
+                }
+
                 List<Guid> userIds = users.Select(x => x.Id).ToList();
-                var posts = _unitOfWork.PostRepository.FilterBy(x => x.Id != _userContext.UserID && !hiddenPostIds.Contains(x.Id) && userIds.Contains(x.Id)).Select(post => new PostDataViewModel()
+                var posts = _unitOfWork.PostRepository.FilterBy(x => x.UserId != _userContext.UserID && !hiddenPostIds.Contains(x.Id) && userIds.Contains(x.Id)).Select(post => new PostDataViewModel()
                 {
                     Body = post.Body,
                     CreatedDate = post.CreatedDate,
