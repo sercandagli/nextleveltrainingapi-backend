@@ -51,6 +51,10 @@ namespace NextLevelTrainingApi
             // configure jwt authentication
             var appSettings = appSettingsSection.Get<JWTAppSettings>();
             services.Configure<EmailSettings>(Configuration.GetSection("EmailSettings"));
+
+            services.Configure<FCMSettings>(Configuration.GetSection("FCMSettings"));
+            services.Configure<APNSettings>(Configuration.GetSection("APNSettings"));
+
             var key = Encoding.ASCII.GetBytes(appSettings.Secret);
             services.AddAuthentication(x =>
             {
@@ -95,7 +99,7 @@ namespace NextLevelTrainingApi
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "NextLevelTraining API V1");
 #else
    // To deploy on IIS
-  c.SwaggerEndpoint("/NextLevelTrainingApi/swagger/v1/swagger.json", "NextLevelTraining API V1");
+  c.SwaggerEndpoint("/swagger/v1/swagger.json", "NextLevelTraining API V1");
 #endif
 
             });

@@ -55,7 +55,9 @@ namespace NextLevelTrainingApi.Controllers
                 Lat = userVM.Lat,
                 Lng = userVM.Lng,
                 PostCode = userVM.PostCode,
-                DeviceID = userVM.DeviceID
+                DeviceID = userVM.DeviceID,
+                DeviceType = userVM.DeviceType,
+                DeviceToken = userVM.DeviceToken
             };
 
             _unitOfWork.UserRepository.InsertOne(user);
@@ -91,6 +93,12 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Invalid credentials." } } });
             }
+            if (!string.IsNullOrEmpty(userVM.DeviceToken) && !string.IsNullOrEmpty(userVM.DeviceType))
+            {
+                user.DeviceToken = userVM.DeviceToken;
+                user.DeviceType = userVM.DeviceType;
+            }
+            _unitOfWork.UserRepository.ReplaceOne(user);
 
             string encryptedToken = GenerateToken(user);
 
@@ -136,7 +144,7 @@ namespace NextLevelTrainingApi.Controllers
                 return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "No EmailID found." } } });
             }
 
-            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID == fbUserVM.Email).SingleOrDefault();
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID.ToLower() == fbUserVM.Email.ToLower()).SingleOrDefault();
             if (user == null)
             {
                 user = new Users();
@@ -146,6 +154,8 @@ namespace NextLevelTrainingApi.Controllers
                 user.PostCode = loginModel.PostCode;
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
                 user.DeviceID = loginModel.DeviceID;
+                user.DeviceType = loginModel.DeviceType;
+                user.DeviceToken = loginModel.DeviceToken;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -173,6 +183,8 @@ namespace NextLevelTrainingApi.Controllers
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
                 user.DeviceID = loginModel.DeviceID;
+                user.DeviceType = loginModel.DeviceType;
+                user.DeviceToken = loginModel.DeviceToken;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -220,7 +232,7 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<string> GoogleLogin(GoogleUserViewModel loginModel)
         {
 
-            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID == loginModel.Email).SingleOrDefault();
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID.ToLower() == loginModel.Email.ToLower()).SingleOrDefault();
             if (user == null)
             {
                 user = new Users();
@@ -231,6 +243,8 @@ namespace NextLevelTrainingApi.Controllers
                 user.SocialLoginType = Constants.GOOGLE_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
                 user.DeviceID = loginModel.DeviceID;
+                user.DeviceToken = loginModel.DeviceToken;
+                user.DeviceType = loginModel.DeviceType;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -252,6 +266,8 @@ namespace NextLevelTrainingApi.Controllers
                 user.FullName = loginModel.Name;
                 user.AccessToken = loginModel.AuthenticationToken;
                 user.DeviceID = loginModel.DeviceID;
+                user.DeviceToken = loginModel.DeviceToken;
+                user.DeviceType = loginModel.DeviceType;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -274,7 +290,7 @@ namespace NextLevelTrainingApi.Controllers
         [HttpPost]
         public ActionResult<bool> ResetPassword(ResetPasswordViewModel loginModel)
         {
-            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID == loginModel.EmailID).SingleOrDefault();
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID.ToLower() == loginModel.EmailID.ToLower()).SingleOrDefault();
             if (user == null)
             {
                 return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "No User found." } } });
@@ -288,6 +304,74 @@ namespace NextLevelTrainingApi.Controllers
             return true;
         }
 
+
+        [Route("AppleLogin")]
+        [HttpPost]
+        public ActionResult<string> AppleLogin(AppleLoginViewModel loginModel)
+        {
+
+            var user = _unitOfWork.UserRepository.FilterBy(x => x.EmailID.ToLower() == loginModel.Email.ToLower()).SingleOrDefault();
+            if (user == null)
+            {
+                user = new Users();
+                user.FullName = loginModel.Name;
+                user.EmailID = loginModel.Email;
+                user.PostCode = loginModel.PostCode;
+                user.Role = loginModel.Role;
+                user.SocialLoginType = Constants.APPLE_LOGIN;
+                user.DeviceID = loginModel.DeviceID;
+                user.DeviceToken = loginModel.DeviceToken;
+                user.DeviceType = loginModel.DeviceType;
+                if (loginModel.Lat != null)
+                {
+                    user.Lat = loginModel.Lat;
+                }
+                if (loginModel.Lng != null)
+                {
+                    user.Lng = loginModel.Lng;
+                }
+
+                _unitOfWork.UserRepository.InsertOne(user);
+            }
+            else
+            {
+                if (user.Role.ToLower() != loginModel.Role.ToLower())
+                {
+                    return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "EmailID already registered." } } });
+                }
+                user.FullName = loginModel.Name;
+                user.DeviceID = loginModel.DeviceID;
+                user.DeviceToken = loginModel.DeviceToken;
+                user.DeviceType = loginModel.DeviceType;
+                if (loginModel.Lat != null)
+                {
+                    user.Lat = loginModel.Lat;
+                }
+                if (loginModel.Lng != null)
+                {
+                    user.Lng = loginModel.Lng;
+                }
+                user.PostCode = loginModel.PostCode;
+                _unitOfWork.UserRepository.ReplaceOne(user);
+            }
+
+            string encryptedToken = GenerateToken(user);
+
+            return encryptedToken;
+        }
+
+
+        //[Route("GetAllPosts")]
+        //[HttpPost]
+        //public ActionResult<List<Post>> GetAllPosts()
+        //{
+        //    var posts = _unitOfWork.PostRepository.AsQueryable().ToList();
+        //    foreach(var p in posts)
+        //    {
+        //        var name = _unitOfWork.UserRepository.FindById(p.UserId);
+        //    }
+        //    return posts;
+        //}
         private string GenerateRandomString()
         {
             Random ran = new Random();

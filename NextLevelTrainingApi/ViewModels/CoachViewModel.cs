@@ -19,6 +19,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string Accomplishment { get; set; }
         public string Status { get; set; }
         public string AboutUs { get; set; }
+        public int Level { get; set; }
         public int Rate { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }

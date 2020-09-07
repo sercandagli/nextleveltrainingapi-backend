@@ -15,7 +15,8 @@ namespace NextLevelTrainingApi.ViewModels
         public string Header { get; set; }
 
         public string Body { get; set; }
-
+        public int Height { get; set; }
+        public int Width { get; set; }
         public string MediaURL { get; set; }
         public int NumberOfLikes { get; set; }
         public bool IsVerified { get; set; }
@@ -26,5 +27,7 @@ namespace NextLevelTrainingApi.ViewModels
 
         public List<CommentedByViewModel> Comments { get; set; }
         public List<Likes> Likes { get; set; }
+
+        public UserDataViewModel Poster { get; set; }
     }
 }

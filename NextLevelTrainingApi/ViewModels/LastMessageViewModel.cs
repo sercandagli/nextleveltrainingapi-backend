@@ -16,5 +16,6 @@ namespace NextLevelTrainingApi.ViewModels
         public string ReceiverProfilePic { get; set; }
         public string SenderName { get; set; }
         public string SenderProfilePic { get; set; }
+        public UserDataViewModel Sender { get; set; }
     }
 }

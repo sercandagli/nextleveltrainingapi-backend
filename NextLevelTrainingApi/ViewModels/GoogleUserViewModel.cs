@@ -13,15 +13,17 @@ namespace NextLevelTrainingApi.ViewModels
         public string Name { get; set; }
         [Required]
         public string Email { get; set; }
-        [Required]
+        //[Required]
         public string DeviceID { get; set; }
+        public string DeviceToken { get; set; }
 
         public string Picture { get; set; }
         [Required]
         public string Role { get; set; }
-        [Required]
+        //[Required]
         public string PostCode { get; set; }
-        [Required]
+        public string DeviceType { get; set; }
+        //[Required]
         public string AuthenticationToken { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }

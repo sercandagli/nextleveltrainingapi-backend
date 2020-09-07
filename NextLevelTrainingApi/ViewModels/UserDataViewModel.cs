@@ -27,6 +27,8 @@ namespace NextLevelTrainingApi.ViewModels
 
         public Guid Id { get; set; }
         public string DeviceID { get; set; }
+        public string DeviceType { get; set; }
+        public string DeviceToken { get; set; }
         public bool IsTempPassword { get; set; }
         public string FullName { get; set; }
 
@@ -50,6 +52,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string Achievements { get; set; }
         public string AboutUs { get; set; }
         public string Accomplishment { get; set; }
+        public int Level { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }
         public int Rate { get; set; }

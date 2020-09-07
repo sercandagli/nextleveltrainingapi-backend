@@ -5,6 +5,7 @@ using NextLevelTrainingApi.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Authentication;
 using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.DAL.Repository
@@ -14,10 +15,31 @@ namespace NextLevelTrainingApi.DAL.Repository
 
         private IMongoDatabase _mongoDatabase;
 
-        public UnitOfWork(INextLevelDBSettings settings)
+        public UnitOfWork(INextLevelDBSettings dbSettings)
         {
-            var client = new MongoClient(settings.ConnectionString);
-            _mongoDatabase = client.GetDatabase(settings.DatabaseName);
+            //var mongoCredential = MongoCredential.CreateCredential(settings.DatabaseName,
+            //                settings.Username, settings.Password);
+            //var mongoClientSettings = new MongoClientSettings()
+            //{
+            //    Credential = mongoCredential,
+            //    Server = new MongoServerAddress(settings.Server, settings.Port)
+            //};
+
+            MongoClientSettings settings = new MongoClientSettings();
+            settings.Server = new MongoServerAddress(dbSettings.Server, dbSettings.Port);
+
+            settings.SslSettings = new SslSettings();
+            settings.SslSettings.EnabledSslProtocols = SslProtocols.Tls12;
+
+            MongoIdentity identity = new MongoInternalIdentity(dbSettings.DatabaseName, dbSettings.Username);
+            MongoIdentityEvidence evidence = new PasswordEvidence(dbSettings.Password);
+
+            settings.Credential = new MongoCredential("SCRAM-SHA-1", identity, evidence);
+
+            MongoClient client = new MongoClient(settings);
+
+           // var client = new MongoClient(mongoClientSettings);
+            _mongoDatabase = client.GetDatabase(dbSettings.DatabaseName);
         }
 
         public void Dispose()

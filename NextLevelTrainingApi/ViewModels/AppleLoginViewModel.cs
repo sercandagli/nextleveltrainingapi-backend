@@ -6,19 +6,18 @@ using System.Threading.Tasks;
 
 namespace NextLevelTrainingApi.ViewModels
 {
-    public class SocialMediaLoginViewModel
+    public class AppleLoginViewModel
     {
+        public string Name { get; set; }
         [Required]
-        public string Role { get; set; }
-        //[Required]
+        public string Email { get; set; }
         public string DeviceID { get; set; }
         public string DeviceToken { get; set; }
+        public string DeviceType { get; set; }
 
         [Required]
-        public string AuthenticationToken { get; set; }
-        //[Required]
+        public string Role { get; set; }
         public string PostCode { get; set; }
-        public string DeviceType { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }
     }

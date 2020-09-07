@@ -38,6 +38,7 @@ namespace NextLevelTrainingApi.DAL.Entities
 
         public string EmailID { get; set; }
         public string DeviceID { get; set; }
+        public string DeviceToken { get; set; }
 
         public string MobileNo { get; set; }
         public string PostCode { get; set; }
@@ -50,6 +51,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public int? ProfileImageWidth { get; set; }
         public bool IsTempPassword { get; set; }
         public string Role { get; set; }
+        public string DeviceType { get; set; }
         public string ProfileImage { get; set; }
         public string Achievements { get; set; }
         public string AboutUs { get; set; }

@@ -26,6 +26,8 @@ using System.Globalization;
 using System.Drawing.Imaging;
 using System.Drawing;
 using System.Text.RegularExpressions;
+using CorePush.Google;
+using CorePush.Apple;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -37,14 +39,18 @@ namespace NextLevelTrainingApi.Controllers
         private IUnitOfWork _unitOfWork;
         private IUserContext _userContext;
         private readonly JWTAppSettings _jwtAppSettings;
+        private readonly FCMSettings _fcmSettings;
+        private readonly APNSettings _apnSettings;
         private EmailSettings _emailSettings;
         //private readonly HttpClient _httpClient;
-        public UsersController(IUnitOfWork unitOfWork, IUserContext userContext, IOptions<JWTAppSettings> jwtAppSettings, IOptions<EmailSettings> emailSettings)
+        public UsersController(IUnitOfWork unitOfWork, IUserContext userContext, IOptions<JWTAppSettings> jwtAppSettings, IOptions<EmailSettings> emailSettings, IOptions<FCMSettings> fcmSettings, IOptions<APNSettings> apnSettings)
         {
             _unitOfWork = unitOfWork;
             _userContext = userContext;
             _jwtAppSettings = jwtAppSettings.Value;
             _emailSettings = emailSettings.Value;
+            _fcmSettings = fcmSettings.Value;
+            _apnSettings = apnSettings.Value;
         }
 
         [HttpGet]
@@ -60,8 +66,10 @@ namespace NextLevelTrainingApi.Controllers
 
             UserDataViewModel usr = new UserDataViewModel();
             usr.Id = user.Id;
+            usr.DeviceType = user.DeviceType;
             usr.FullName = user.FullName;
             usr.DeviceID = user.DeviceID;
+            usr.DeviceToken = user.DeviceToken;
             usr.EmailID = user.EmailID;
             usr.AboutUs = user.AboutUs;
             usr.AccessToken = user.AccessToken;
@@ -167,7 +175,7 @@ namespace NextLevelTrainingApi.Controllers
                 Id = post.Id,
                 IsVerified = post.IsVerified,
                 Likes = post.Likes,
-                MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                MediaURL = post.MediaURL,
                 NumberOfLikes = post.NumberOfLikes,
                 UserId = post.UserId
             }).ToList();
@@ -178,6 +186,20 @@ namespace NextLevelTrainingApi.Controllers
                 p.ProfileImage = pUser.ProfileImage;
                 p.ProfileImage = string.IsNullOrEmpty(p.ProfileImage) ? "" : ((p.ProfileImage.Contains("http://") || p.ProfileImage.Contains("https://")) ? p.ProfileImage : _jwtAppSettings.AppBaseURL + p.ProfileImage);
                 p.CreatedBy = pUser.FullName;
+
+                try
+                {
+                    //string path = item.MediaURL.Replace(baseUrl + "/", "");
+                    string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot" + p.MediaURL);
+                    System.Drawing.Image img = System.Drawing.Image.FromFile(fullPath);
+                    p.Height = img.Height;
+                    p.Width = img.Width;
+                    p.MediaURL = _jwtAppSettings.AppBaseURL + p.MediaURL;
+                }
+                catch (Exception ex)
+                {
+                    p.MediaURL = _jwtAppSettings.AppBaseURL + p.MediaURL;
+                }
             }
 
             usr.Posts = posts;
@@ -187,7 +209,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("UpdateProfile")]
-        public ActionResult<Users> UpdateProfile(UpdateProfileViewModel profile)
+        public async Task<ActionResult<Users>> UpdateProfile(UpdateProfileViewModel profile)
         {
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
@@ -209,6 +231,14 @@ namespace NextLevelTrainingApi.Controllers
             notification.CreatedDate = DateTime.Now;
             notification.UserId = _userContext.UserID;
             _unitOfWork.NotificationRepository.InsertOne(notification);
+            if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                await AndriodPushNotification(user.DeviceToken, notification);
+            }
+            else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+                await ApplePushNotification(user.DeviceToken, notification);
+            }
             return user;
         }
 
@@ -284,6 +314,15 @@ namespace NextLevelTrainingApi.Controllers
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = user.Id;
                     _unitOfWork.NotificationRepository.InsertOne(notification);
+
+                    if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+                    {
+                        AndriodPushNotification(user.DeviceToken, notification);
+                    }
+                    else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+                    {
+
+                    }
                 }
             }
 
@@ -459,7 +498,7 @@ namespace NextLevelTrainingApi.Controllers
                                  Id = post.Id,
                                  IsVerified = post.IsVerified,
                                  Likes = post.Likes,
-                                 MediaURL = baseUrl + post.MediaURL,
+                                 MediaURL = post.MediaURL,
                                  NumberOfLikes = post.NumberOfLikes,
                                  UserId = post.UserId,
                                  //CreatedBy = usr.FullName,
@@ -492,6 +531,55 @@ namespace NextLevelTrainingApi.Controllers
                         com.Commented = comment.Commented;
                         com.Text = comment.Text;
                         item.Comments.Add(com);
+                    }
+                }
+
+                item.Poster = _unitOfWork.UserRepository.FilterBy(x => x.Id == item.UserId).Select(x => new UserDataViewModel()
+                {
+                    Id = x.Id,
+                    Role = x.Role,
+                    Address = x.Address,
+                    EmailID = x.EmailID,
+                    FullName = x.FullName,
+                    MobileNo = x.MobileNo,
+                    ProfileImage = x.ProfileImage,
+                    DBSCeritificate = x.DBSCeritificate,
+                    Teams = x.Teams,
+                    Qualifications = x.Qualifications,
+                    TrainingLocations = x.TrainingLocations,
+                    Rate = x.Rate,
+                    VerificationDocument = x.VerificationDocument,
+                    PostCode = x.PostCode,
+                    AboutUs = x.AboutUs,
+                    Achievements = x.Achievements,
+                    Accomplishment = x.Accomplishment,
+                    Lat = x.Lat,
+                    Lng = x.Lng,
+                    TravelMile = x.TravelMile,
+                    HiddenPosts = x.HiddenPosts,
+                    Experiences = x.Experiences
+
+                }).SingleOrDefault();
+
+                if (item.Poster != null)
+                {
+                    item.Poster.ProfileImage = string.IsNullOrEmpty(item.Poster.ProfileImage) ? "" : ((item.Poster.ProfileImage.Contains("http://") || item.Poster.ProfileImage.Contains("https://")) ? item.Poster.ProfileImage : _jwtAppSettings.AppBaseURL + item.Poster.ProfileImage);
+                }
+
+                if (!string.IsNullOrEmpty(item.MediaURL))
+                {
+                    try
+                    {
+                        //string path = item.MediaURL.Replace(baseUrl + "/", "");
+                        string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot" + item.MediaURL);
+                        System.Drawing.Image img = System.Drawing.Image.FromFile(fullPath);
+                        item.Height = img.Height;
+                        item.Width = img.Width;
+                        item.MediaURL = baseUrl + item.MediaURL;
+                    }
+                    catch (Exception ex)
+                    {
+                        item.MediaURL = baseUrl + item.MediaURL;
                     }
                 }
             }
@@ -837,13 +925,13 @@ namespace NextLevelTrainingApi.Controllers
                 user.DBSCeritificate = new DocumentDetail();
                 user.DBSCeritificate.Path = documentDetailVM.Path;
                 user.DBSCeritificate.Type = documentDetailVM.Type;
-                user.DBSCeritificate.Verified = true;
+                //user.DBSCeritificate.Verified = true;
             }
             else
             {
                 user.DBSCeritificate.Path = documentDetailVM.Path;
                 user.DBSCeritificate.Type = documentDetailVM.Type;
-                user.DBSCeritificate.Verified = documentDetailVM.Verified;
+                //user.DBSCeritificate.Verified = documentDetailVM.Verified;
             }
 
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -886,13 +974,13 @@ namespace NextLevelTrainingApi.Controllers
                 user.VerificationDocument = new DocumentDetail();
                 user.VerificationDocument.Path = documentDetailVM.Path;
                 user.VerificationDocument.Type = documentDetailVM.Type;
-                user.VerificationDocument.Verified = true;
+                //user.VerificationDocument.Verified = true;
             }
             else
             {
                 user.VerificationDocument.Path = documentDetailVM.Path;
                 user.VerificationDocument.Type = documentDetailVM.Type;
-                user.VerificationDocument.Verified = documentDetailVM.Verified;
+                //user.VerificationDocument.Verified = documentDetailVM.Verified;
             }
 
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -1267,7 +1355,7 @@ namespace NextLevelTrainingApi.Controllers
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
             List<Coach> playerCoaches = user.Coaches.ToList();
-            coach.Search = coach.Search.ToLower();
+            coach.Search = Convert.ToString(coach.Search).ToLower();
             var coaches = _unitOfWork.UserRepository.AsQueryable().Where(x => x.Role.ToLower() == Constants.COACH && ((coach.Search == null || coach.Search == "" || x.FullName.ToLower().Contains(coach.Search) || x.Address.ToLower().Contains(coach.Search) || x.EmailID.ToLower().Contains(coach.Search)))).ToList().Select(x => new CoachViewModel
             {
                 Id = x.Id,
@@ -1295,7 +1383,7 @@ namespace NextLevelTrainingApi.Controllers
                 Posts = _unitOfWork.PostRepository.FilterBy(z => z.UserId == x.Id).ToList(),
                 Status = playerCoaches.Where(z => z.CoachId == x.Id).FirstOrDefault() == null ? "None" : playerCoaches.Where(z => z.CoachId == x.Id).First().Status,
                 //Bookings = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == x.Id).ToList()
-            }).Where(x => (x.DBSCeritificate != null && x.DBSCeritificate.Verified == true) && (x.VerificationDocument != null && x.VerificationDocument.Verified == true) && x.Rate != 0).ToList();
+            }).ToList();
 
             foreach (var item in coaches)
             {
@@ -1347,6 +1435,13 @@ namespace NextLevelTrainingApi.Controllers
                 int total = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Sum(x => x.Rating);
                 int count = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Count();
                 item.AverageBookingRating = count == 0 ? "New" : (total / count).ToString();
+
+                item.Level = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id && x.BookingStatus.ToLower() == "completed").Count();
+                item.Level = Convert.ToInt32(Math.Ceiling((double)item.Level / 50));
+                if (item.Level == 0)
+                {
+                    item.Level = 1;
+                }
             }
             return coaches;
 
@@ -1784,6 +1879,38 @@ namespace NextLevelTrainingApi.Controllers
                     }
                     message.ReceiverProfilePic = string.IsNullOrEmpty(message.ReceiverProfilePic) ? "" : ((message.ReceiverProfilePic.Contains("http://") || message.ReceiverProfilePic.Contains("https://")) ? message.ReceiverProfilePic : _jwtAppSettings.AppBaseURL + message.ReceiverProfilePic);
                     message.SenderProfilePic = string.IsNullOrEmpty(message.SenderProfilePic) ? "" : ((message.SenderProfilePic.Contains("http://") || message.SenderProfilePic.Contains("https://")) ? message.SenderProfilePic : _jwtAppSettings.AppBaseURL + message.SenderProfilePic);
+
+                    message.Sender = _unitOfWork.UserRepository.FilterBy(x => x.Id == message.SenderID).Select(x => new UserDataViewModel()
+                    {
+                        Id = x.Id,
+                        Role = x.Role,
+                        Address = x.Address,
+                        EmailID = x.EmailID,
+                        FullName = x.FullName,
+                        MobileNo = x.MobileNo,
+                        ProfileImage = x.ProfileImage,
+                        DBSCeritificate = x.DBSCeritificate,
+                        Teams = x.Teams,
+                        Qualifications = x.Qualifications,
+                        TrainingLocations = x.TrainingLocations,
+                        Rate = x.Rate,
+                        VerificationDocument = x.VerificationDocument,
+                        PostCode = x.PostCode,
+                        AboutUs = x.AboutUs,
+                        Achievements = x.Achievements,
+                        Accomplishment = x.Accomplishment,
+                        Lat = x.Lat,
+                        Lng = x.Lng,
+                        TravelMile = x.TravelMile,
+                        HiddenPosts = x.HiddenPosts,
+                        Experiences = x.Experiences
+
+                    }).SingleOrDefault();
+
+                    if (message.Sender != null)
+                    {
+                        message.Sender.ProfileImage = string.IsNullOrEmpty(message.Sender.ProfileImage) ? "" : ((message.Sender.ProfileImage.Contains("http://") || message.Sender.ProfileImage.Contains("https://")) ? message.Sender.ProfileImage : _jwtAppSettings.AppBaseURL + message.Sender.ProfileImage);
+                    }
                     messages.Add(message);
                 }
             }
@@ -1937,6 +2064,16 @@ namespace NextLevelTrainingApi.Controllers
             var usr = _unitOfWork.UserRepository.FindById(booking.PlayerID);
 
             EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", booking.BookingDate.ToString("dd MMM yyyy") + " " + booking.FromTime + " - " + booking.ToTime);
+
+            var player = _unitOfWork.UserRepository.FindById(booking.PlayerID);
+            if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                AndriodPushNotification(player.DeviceToken, notification);
+            }
+            else if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+
+            }
             return book;
 
         }
@@ -1960,6 +2097,16 @@ namespace NextLevelTrainingApi.Controllers
 
             var user = _unitOfWork.UserRepository.FindById(booking.PlayerID);
             EmailHelper.SendEmail(user.EmailID, _emailSettings, "cancelbooking");
+
+            var player = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                AndriodPushNotification(player.DeviceToken, notification);
+            }
+            else if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+
+            }
             return booking;
 
         }
@@ -2208,6 +2355,16 @@ namespace NextLevelTrainingApi.Controllers
 
             var usr = _unitOfWork.UserRepository.FindById(b.PlayerID);
             EmailHelper.SendEmail(usr.EmailID, _emailSettings, "reschedule", b.RescheduledDateTime.Value.ToString("dd MMM yyyy") + " " + booking.FromTime.ToString("hh:mm tt") + " - " + booking.ToTime.ToString("hh:mm tt"));
+
+            var player = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                AndriodPushNotification(player.DeviceToken, notification);
+            }
+            else if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+
+            }
             return b;
         }
 
@@ -2332,7 +2489,7 @@ namespace NextLevelTrainingApi.Controllers
                     Id = post.Id,
                     IsVerified = post.IsVerified,
                     Likes = post.Likes,
-                    MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                    MediaURL = post.MediaURL,
                     NumberOfLikes = post.NumberOfLikes,
                     UserId = post.UserId,
                 }).ToList();
@@ -2343,10 +2500,24 @@ namespace NextLevelTrainingApi.Controllers
                     user.ProfileImage = pUser.ProfileImage;
                     user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
                     user.CreatedBy = pUser.FullName;
+
+                    try
+                    {
+                        //string path = item.MediaURL.Replace(baseUrl + "/", "");
+                        string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot" + user.MediaURL);
+                        System.Drawing.Image img = System.Drawing.Image.FromFile(fullPath);
+                        user.Height = img.Height;
+                        user.Width = img.Width;
+                        user.MediaURL = _jwtAppSettings.AppBaseURL + user.MediaURL;
+                    }
+                    catch (Exception ex)
+                    {
+                        user.MediaURL = _jwtAppSettings.AppBaseURL + user.MediaURL;
+                    }
                 }
 
                 List<Guid> userIds = posts.Select(x => x.UserId).ToList();
-                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Id != _userContext.UserID && userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).Select(x => new UserDataViewModel()
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Id != _userContext.UserID && userIds.Contains(x.Id) && x.Role.ToLower() == Constants.COACH).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2369,6 +2540,7 @@ namespace NextLevelTrainingApi.Controllers
                     Lng = x.Lng,
                     TravelMile = x.TravelMile,
                     HiddenPosts = x.HiddenPosts,
+                    Experiences = x.Experiences
                     // Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == x.Id).ToList()
                     //Bookings = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == x.Id).ToList()
                 }).ToList();
@@ -2429,6 +2601,7 @@ namespace NextLevelTrainingApi.Controllers
                     AboutUs = x.AboutUs,
                     Achievements = x.Achievements,
                     Accomplishment = x.Accomplishment,
+                    Experiences = x.Experiences,
                     Lat = x.Lat,
                     Lng = x.Lng
                 }).ToList();
@@ -2476,6 +2649,16 @@ namespace NextLevelTrainingApi.Controllers
                         p.ProfileImage = string.IsNullOrEmpty(p.ProfileImage) ? "" : ((p.ProfileImage.Contains("http://") || p.ProfileImage.Contains("https://")) ? p.ProfileImage : _jwtAppSettings.AppBaseURL + p.ProfileImage);
                         p.CreatedBy = pUser.FullName;
                     }
+
+                    item.ProfileImage = string.IsNullOrEmpty(item.ProfileImage) ? "" : ((item.ProfileImage.Contains("http://") || item.ProfileImage.Contains("https://")) ? item.ProfileImage : _jwtAppSettings.AppBaseURL + item.ProfileImage);
+
+                    item.Posts = psts;
+                    item.Level = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id && x.BookingStatus.ToLower() == "completed").Count();
+                    item.Level = Convert.ToInt32(Math.Ceiling((double)item.Level / 50));
+                    if (item.Level == 0)
+                    {
+                        item.Level = 1;
+                    }
                 }
                 foreach (var item in players)
                 {
@@ -2489,6 +2672,8 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
                     }
+                    item.ProfileImage = string.IsNullOrEmpty(item.ProfileImage) ? "" : ((item.ProfileImage.Contains("http://") || item.ProfileImage.Contains("https://")) ? item.ProfileImage : _jwtAppSettings.AppBaseURL + item.ProfileImage);
+                    //item.BookingCount = _unitOfWork.BookingRepository.FilterBy(x => x.PlayerID == item.Id && x.BookingStatus.ToLower() != "cancelled").Count();
                 }
 
 
@@ -2503,7 +2688,8 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
-                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.Id != _userContext.UserID && (x.FullName.Contains(post.Search) || x.PostCode.Contains(post.Search))).Select(x => new UserDataViewModel()
+                string postSearch = Regex.Replace(Convert.ToString(post.Search).ToLower().Trim(), @"\s", "");
+                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.Id != _userContext.UserID && (x.FullName.ToLower().Contains(post.Search.ToLower()) || x.PostCode.ToLower().Contains(postSearch))).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
@@ -2524,7 +2710,8 @@ namespace NextLevelTrainingApi.Controllers
                     Accomplishment = x.Accomplishment,
                     Lat = x.Lat,
                     Lng = x.Lng,
-                    TravelMile = x.TravelMile
+                    TravelMile = x.TravelMile,
+                    Experiences = x.Experiences
                 }).ToList();
 
                 foreach (var item in users)
@@ -2574,13 +2761,14 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
                     }
+                    item.ProfileImage = string.IsNullOrEmpty(item.ProfileImage) ? "" : ((item.ProfileImage.Contains("http://") || item.ProfileImage.Contains("https://")) ? item.ProfileImage : _jwtAppSettings.AppBaseURL + item.ProfileImage);
                     //item.Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == item.Id).ToList();
                 }
 
                 users.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 users.ForEach(user => user.Posts.ForEach(x => x.MediaURL = _jwtAppSettings.AppBaseURL + x.MediaURL));
                 var players = users.Where(x => x.Role.ToLower() == Constants.PLAYER).ToList();
-                var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH && x.DBSCeritificate != null && x.VerificationDocument != null).ToList();
+                var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH).ToList();
 
                 coaches.ForEach(x => x.Bookings.ForEach(b => b.BookingReviews.ForEach(x => x.PlayerProfileImage = x.PlayerProfileImage != null ? ((x.PlayerProfileImage.Contains("http://") || x.PlayerProfileImage.Contains("https:/")) ? x.PlayerProfileImage : _jwtAppSettings.AppBaseURL + x.PlayerProfileImage) : "")));
                 foreach (var item in coaches)
@@ -2611,7 +2799,18 @@ namespace NextLevelTrainingApi.Controllers
                         p.ProfileImage = string.IsNullOrEmpty(p.ProfileImage) ? "" : ((p.ProfileImage.Contains("http://") || p.ProfileImage.Contains("https://")) ? p.ProfileImage : _jwtAppSettings.AppBaseURL + p.ProfileImage);
                         p.CreatedBy = pUser.FullName;
                     }
+                    item.Posts = psts;
+                    item.Level = Convert.ToInt32(Math.Ceiling((double)item.Level / 50));
+                    if (item.Level == 0)
+                    {
+                        item.Level = 1;
+                    }
                 }
+
+                //foreach (var item in players)
+                //{
+                //    item.BookingCount = _unitOfWork.BookingRepository.FilterBy(x => x.PlayerID == item.Id && x.BookingStatus.ToLower() != "cancelled").Count();
+                //}
 
                 List<Guid> userIds = users.Select(x => x.Id).ToList();
                 var posts = _unitOfWork.PostRepository.FilterBy(x => x.UserId != _userContext.UserID && !hiddenPostIds.Contains(x.Id) && userIds.Contains(x.Id)).Select(post => new PostDataViewModel()
@@ -2622,7 +2821,7 @@ namespace NextLevelTrainingApi.Controllers
                     Id = post.Id,
                     IsVerified = post.IsVerified,
                     Likes = post.Likes,
-                    MediaURL = _jwtAppSettings.AppBaseURL + post.MediaURL,
+                    MediaURL = post.MediaURL,
                     NumberOfLikes = post.NumberOfLikes,
                     UserId = post.UserId
                 }).ToList();
@@ -2633,6 +2832,19 @@ namespace NextLevelTrainingApi.Controllers
                     user.ProfileImage = pUser.ProfileImage;
                     user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
                     user.CreatedBy = pUser.FullName;
+                    try
+                    {
+                        //string path = item.MediaURL.Replace(baseUrl + "/", "");
+                        string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot" + user.MediaURL);
+                        System.Drawing.Image img = System.Drawing.Image.FromFile(fullPath);
+                        user.Height = img.Height;
+                        user.Width = img.Width;
+                        user.MediaURL = _jwtAppSettings.AppBaseURL + user.MediaURL;
+                    }
+                    catch (Exception ex)
+                    {
+                        user.MediaURL = _jwtAppSettings.AppBaseURL + user.MediaURL;
+                    }
                 }
 
                 SearchPostResultViewModel searchResult = new SearchPostResultViewModel();
@@ -2685,6 +2897,16 @@ namespace NextLevelTrainingApi.Controllers
                     notification.UserId = connectedUser.UserId;
                     _unitOfWork.NotificationRepository.InsertOne(notification);
 
+                    var cUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
+                    if (cUser.DeviceType != null && cUser.DeviceType.ToLower() == Constants.ANDRIOD_DEVICE)
+                    {
+                        AndriodPushNotification(cUser.DeviceToken, notification);
+                    }
+                    else if (cUser.DeviceType != null && Convert.ToString(cUser.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+                    {
+
+                    }
+
                 }
                 var aUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
                 if (aUser != null)
@@ -2698,6 +2920,15 @@ namespace NextLevelTrainingApi.Controllers
                         notification.CreatedDate = DateTime.Now;
                         notification.UserId = user.Id;
                         _unitOfWork.NotificationRepository.InsertOne(notification);
+
+                        if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+                        {
+                            AndriodPushNotification(user.DeviceToken, notification);
+                        }
+                        else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+                        {
+
+                        }
                     }
                 }
                 _unitOfWork.UserRepository.ReplaceOne(user);
@@ -2717,6 +2948,16 @@ namespace NextLevelTrainingApi.Controllers
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = connectedUser.UserId;
                     _unitOfWork.NotificationRepository.InsertOne(notification);
+
+                    var cUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
+                    if (cUser.DeviceType != null && Convert.ToString(cUser.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+                    {
+                        AndriodPushNotification(cUser.DeviceToken, notification);
+                    }
+                    else if (cUser.DeviceType != null && Convert.ToString(cUser.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+                    {
+
+                    }
                 }
 
                 var aUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
@@ -2733,6 +2974,15 @@ namespace NextLevelTrainingApi.Controllers
                         notification.CreatedDate = DateTime.Now;
                         notification.UserId = user.Id;
                         _unitOfWork.NotificationRepository.InsertOne(notification);
+
+                        if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+                        {
+                            AndriodPushNotification(user.DeviceToken, notification);
+                        }
+                        else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+                        {
+
+                        }
                     }
                 }
                 _unitOfWork.UserRepository.ReplaceOne(user);
@@ -2972,6 +3222,47 @@ namespace NextLevelTrainingApi.Controllers
 
             return reviewVM;
 
+        }
+
+
+        private async Task AndriodPushNotification(string deviceToken, Notification notification)
+        {
+            HttpClient httpClient = new HttpClient();
+            FcmSettings settings = new FcmSettings() { SenderId = _fcmSettings.SenderId, ServerKey = _fcmSettings.ServerKey };
+            GoogleNotification googleNotification = new GoogleNotification();
+            googleNotification.Data.Notification = notification;
+            var fcm = new FcmSender(settings, httpClient);
+            FcmResponse result = await fcm.SendAsync(deviceToken, googleNotification);
+            if (!result.IsSuccess())
+            {
+                ErrorLog error = new ErrorLog();
+                error.Id = Guid.NewGuid();
+                error.Exception = JsonConvert.SerializeObject(result);
+                error.StackTrace = "Andriod Push Notification: " + notification;
+                error.CreatedDate = DateTime.Now;
+                _unitOfWork.ErrorLogRepository.InsertOne(error);
+            }
+        }
+
+        //[HttpGet]
+        //[Route("AppleNotificaion")]
+        private async Task ApplePushNotification(string deviceToken, Notification notification)
+        {
+            HttpClient httpClient = new HttpClient();
+            ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgUL33Lbq2AOTiInGG15tB+pP0POWC6mpUtJlt+qKtJ4GgCgYIKoZIzj0DAQehRANCAAQYw0UCDNksYH/nKhxP4xEExt/q5lE8w6OFAx37l14j6UZ0CDDu1DjfGt/b5AmpBw+pWhBhEMNAvGHjBW4cM+mZ", P8PrivateKeyId = "7PRJ27R69X", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
+            AppleNotification appleNotification = new AppleNotification();
+            appleNotification.Aps.AlertBody = notification.Text;
+            var apn = new ApnSender(apnSettings, httpClient);
+            var result = await apn.SendAsync(appleNotification, deviceToken);
+            if (!result.IsSuccess)
+            {
+                ErrorLog error = new ErrorLog();
+                error.Id = Guid.NewGuid();
+                error.Exception = JsonConvert.SerializeObject(result);
+                error.StackTrace = "Apple Push Notification: " + notification.Text + " DeviceToken:" + deviceToken;
+                error.CreatedDate = DateTime.Now;
+                _unitOfWork.ErrorLogRepository.InsertOne(error);
+            }
         }
     }
 }

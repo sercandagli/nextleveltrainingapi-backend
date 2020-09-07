@@ -339,3 +339,4 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 /NextLevelTrainingApi/wwwroot/Upload
+/NextLevelTrainingApi/postcodes.csv

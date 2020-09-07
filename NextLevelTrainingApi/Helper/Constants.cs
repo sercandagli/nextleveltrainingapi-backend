@@ -9,7 +9,10 @@ namespace NextLevelTrainingApi.Helper
     {
         public const string FACEBOOK_LOGIN = "facebook";
         public const string GOOGLE_LOGIN = "google";
+        public const string APPLE_LOGIN = "apple";
         public const string PLAYER = "player";
         public const string COACH = "coach";
+        public const string ANDRIOD_DEVICE = "android";
+        public const string APPLE_DEVICE = "ios";
     }
 }
