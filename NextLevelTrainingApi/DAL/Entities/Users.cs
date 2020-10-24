@@ -52,6 +52,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public bool IsTempPassword { get; set; }
         public string Role { get; set; }
         public string DeviceType { get; set; }
+        public bool Featured { get; set; }
         public string ProfileImage { get; set; }
         public string Achievements { get; set; }
         public string AboutUs { get; set; }

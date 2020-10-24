@@ -57,7 +57,8 @@ namespace NextLevelTrainingApi.Controllers
                 PostCode = userVM.PostCode,
                 DeviceID = userVM.DeviceID,
                 DeviceType = userVM.DeviceType,
-                DeviceToken = userVM.DeviceToken
+                DeviceToken = userVM.DeviceToken,
+                Featured = userVM.Featured
             };
 
             _unitOfWork.UserRepository.InsertOne(user);

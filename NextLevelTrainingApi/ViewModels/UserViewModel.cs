@@ -24,6 +24,8 @@ namespace NextLevelTrainingApi.ViewModels
         public string MobileNo { get; set; }
         public string DeviceType { get; set; }
 
+        public bool Featured { get; set; }
+
         [Required]
         public string Password { get; set; }
 
