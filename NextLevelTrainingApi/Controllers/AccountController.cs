@@ -157,6 +157,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.DeviceID = loginModel.DeviceID;
                 user.DeviceType = loginModel.DeviceType;
                 user.DeviceToken = loginModel.DeviceToken;
+                user.Featured = loginModel.Featured;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -246,6 +247,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.DeviceID = loginModel.DeviceID;
                 user.DeviceToken = loginModel.DeviceToken;
                 user.DeviceType = loginModel.DeviceType;
+                user.Featured = loginModel.Featured;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -323,6 +325,7 @@ namespace NextLevelTrainingApi.Controllers
                 user.DeviceID = loginModel.DeviceID;
                 user.DeviceToken = loginModel.DeviceToken;
                 user.DeviceType = loginModel.DeviceType;
+                user.Featured = loginModel.Featured;
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;

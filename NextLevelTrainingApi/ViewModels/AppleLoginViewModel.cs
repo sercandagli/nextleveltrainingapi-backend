@@ -15,6 +15,8 @@ namespace NextLevelTrainingApi.ViewModels
         public string DeviceToken { get; set; }
         public string DeviceType { get; set; }
 
+        public bool Featured { get; set; }
+
         [Required]
         public string Role { get; set; }
         public string PostCode { get; set; }

@@ -2368,7 +2368,6 @@ namespace NextLevelTrainingApi.Controllers
             return b;
         }
 
-
         [HttpPost]
         [Route("GetAvailableTimeByCoachId")]
         public ActionResult<List<string>> GetAvailableTimeByCoachId(CoachAvailabilityViewModel avalaibility)

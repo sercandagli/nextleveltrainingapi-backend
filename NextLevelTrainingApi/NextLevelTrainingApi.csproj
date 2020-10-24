@@ -10,7 +10,6 @@
     <EmbeddedResource Remove="Services\**" />
     <None Remove="Services\**" />
   </ItemGroup>
-
   <ItemGroup>
     <COMReference Include="{d37e2a3e-8545-3a39-9f4f-31827c9124ab}">
       <Guid>d37e2a3e-8545-3a39-9f4f-31827c9124ab</Guid>
@@ -19,6 +18,7 @@
       <WrapperTool>tlbimp</WrapperTool>
     </COMReference>
   </ItemGroup>
+
 
   <ItemGroup>
     <PackageReference Include="CorePush" Version="3.0.0" />
