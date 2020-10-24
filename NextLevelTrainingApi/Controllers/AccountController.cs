@@ -17,7 +17,7 @@ using NextLevelTrainingApi.DAL.Interfaces;
 using NextLevelTrainingApi.Helper;
 using NextLevelTrainingApi.Models;
 using NextLevelTrainingApi.ViewModels;
-
+db.getCollection('Users').find({ "_id":  NUUID("d60ec1f7-3ce4-4be8-b2c6-2441acc06e35")})  
 namespace NextLevelTrainingApi.Controllers
 {
     [Route("api/[controller]")]

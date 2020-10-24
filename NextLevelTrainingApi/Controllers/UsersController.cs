@@ -2402,7 +2402,7 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         DateTime starttime = start.AddHours(i);
                         DateTime endtime = end.AddHours(i + 1);
-                        if (endtime >= slot.ToTime)
+                        if (endtime > slot.ToTime)
                         {
                             break;
                         }
