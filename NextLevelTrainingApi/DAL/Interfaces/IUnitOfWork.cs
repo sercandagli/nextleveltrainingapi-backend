@@ -19,5 +19,6 @@ namespace NextLevelTrainingApi.DAL.Interfaces
         IGenericRepository<ErrorLog> ErrorLogRepository { get; }
         IGenericRepository<HashTag> HashTagRepository { get; }
         IGenericRepository<Notification> NotificationRepository { get; }
+        IGenericRepository<ApiKey> ApiKeyRepository { get; }
     }
 }

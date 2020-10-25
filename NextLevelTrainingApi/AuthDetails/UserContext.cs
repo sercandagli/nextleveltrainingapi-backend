@@ -16,9 +16,11 @@ namespace NextLevelTrainingApi.AuthDetails
 
         private string GetUserClaimValue(string claimType)
         {
+
             string value = _httpContextAccessor.HttpContext.User.Claims.Where(c => c.Type == claimType)
-                   .Select(c => c.Value).SingleOrDefault();
+       .Select(c => c.Value).SingleOrDefault();
             return value;
+
         }
 
         public Guid UserID

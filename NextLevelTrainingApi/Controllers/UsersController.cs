@@ -32,8 +32,8 @@ using CorePush.Apple;
 namespace NextLevelTrainingApi.Controllers
 {
     [Route("api/[controller]")]
-    [Authorize]
     [ApiController]
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private IUnitOfWork _unitOfWork;
@@ -349,12 +349,19 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("SaveLikebyPost")]
-        public ActionResult<Post> SaveLikebyPost(PostLike postVM)
+        public async Task<ActionResult<Post>> SaveLikebyPost(PostLike postVM)
         {
             var post = _unitOfWork.PostRepository.FindById(postVM.PostID);
             if (post == null)
             {
                 return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Post not found." } } });
+            }
+
+            var user = _unitOfWork.UserRepository.FindById(postVM.UserID);
+            if(user == null)
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+
             }
 
             if (post.Likes.Count(x => x.UserId == postVM.UserID) == 0)
@@ -363,6 +370,22 @@ namespace NextLevelTrainingApi.Controllers
             }
 
             _unitOfWork.PostRepository.ReplaceOne(post);
+
+            Notification notification = new Notification();
+            notification.Id = Guid.NewGuid();
+            notification.Text = $"{user.FullName} liked your post";
+            notification.CreatedDate = DateTime.Now;
+            notification.UserId = _userContext.UserID;
+            notification.Image = user.ProfileImage;
+            _unitOfWork.NotificationRepository.InsertOne(notification);
+            if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                await AndriodPushNotification(user.DeviceToken, notification);
+            }
+            else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+                await ApplePushNotification(user.DeviceToken, notification);
+            }
 
             return post;
 
@@ -3229,7 +3252,11 @@ namespace NextLevelTrainingApi.Controllers
             HttpClient httpClient = new HttpClient();
             FcmSettings settings = new FcmSettings() { SenderId = _fcmSettings.SenderId, ServerKey = _fcmSettings.ServerKey };
             GoogleNotification googleNotification = new GoogleNotification();
-            googleNotification.Data.Notification = notification;
+            googleNotification.Data = new AndroidPushNotificationsModel {
+                Image = notification.Image,
+                Title = notification.Text,
+                Message = notification.Text
+            };
             var fcm = new FcmSender(settings, httpClient);
             FcmResponse result = await fcm.SendAsync(deviceToken, googleNotification);
             if (!result.IsSuccess())
