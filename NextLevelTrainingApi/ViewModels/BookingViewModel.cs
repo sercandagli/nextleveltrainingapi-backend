@@ -13,8 +13,8 @@ namespace NextLevelTrainingApi.ViewModels
         public int BookingNumber { get; set; }
         public Guid CoachID { get; set; }
         public int CoachRate { get; set; }
-        public DateTime FromTime { get; set; }
-        public DateTime ToTime { get; set; }
+
+        public List<BookingTimeViewModel> Sessions { get; set; }
         public DateTime SentDate { get; set; }
         public string FullName { get; set; }
 
@@ -25,7 +25,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string PaymentStatus { get; set; }
         public string TransactionID { get; set; }
         public DateTime CurrentTime { get; set; }
-        public DateTime BookingDate { get; set; }
+        
         public string BookingStatus { get; set; }
         public DateTime? RescheduledDateTime { get; set; }
         public DateTime? CancelledDateTime { get; set; }

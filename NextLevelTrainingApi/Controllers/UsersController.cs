@@ -93,7 +93,6 @@ namespace NextLevelTrainingApi.Controllers
                 BookingNumber = x.BookingNumber,
                 BookingStatus = x.BookingStatus,
                 CoachID = x.CoachID,
-                FromTime = x.FromTime,
                 FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                 Id = x.Id,
                 Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -101,13 +100,17 @@ namespace NextLevelTrainingApi.Controllers
                 PaymentStatus = x.PaymentStatus,
                 PlayerID = x.PlayerID,
                 SentDate = x.SentDate,
-                ToTime = x.ToTime,
+                Sessions = x.Sessions.Select(x => new BookingTimeViewModel {
+                    BookingDate = x.BookingDate,
+                    FromTime = x.FromTime,
+                    ToTime = x.ToTime,
+                    SessionStatus = x.Status
+                }).ToList(),
                 TransactionID = x.TransactionID,
                 CancelledDateTime = x.CancelledDateTime,
                 RescheduledDateTime = x.RescheduledDateTime,
                 CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
                 ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
-                BookingDate = x.BookingDate,
                 BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
                 {
                     BookingId = x.Id,
@@ -1417,7 +1420,6 @@ namespace NextLevelTrainingApi.Controllers
                     BookingNumber = x.BookingNumber,
                     BookingStatus = x.BookingStatus,
                     CoachID = x.CoachID,
-                    FromTime = x.FromTime,
                     FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                     Id = x.Id,
                     Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -1425,13 +1427,18 @@ namespace NextLevelTrainingApi.Controllers
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
-                    ToTime = x.ToTime,
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
                     CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
                     ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
-                    BookingDate = x.BookingDate,
+                    Sessions = x.Sessions.Select(x => new BookingTimeViewModel
+                    {
+                        BookingDate = x.BookingDate,
+                        ToTime = x.ToTime,
+                        FromTime = x.FromTime,
+                        SessionStatus = x.Status
+                    }).ToList(),
                     BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
                     {
                         BookingId = x.Id,
@@ -1459,7 +1466,8 @@ namespace NextLevelTrainingApi.Controllers
                 int count = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Count();
                 item.AverageBookingRating = count == 0 ? "New" : (total / count).ToString();
 
-                item.Level = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id && x.BookingStatus.ToLower() == "completed").Count();
+                var coachBookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id);
+                item.Level = coachBookings.Sum(x => x.Sessions.Where(x => x.Status == "completed").Count());
                 item.Level = Convert.ToInt32(Math.Ceiling((double)item.Level / 50));
                 if (item.Level == 0)
                 {
@@ -2025,17 +2033,24 @@ namespace NextLevelTrainingApi.Controllers
             {
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
-
-            string bookDate = booking.BookingDate.ToString("yyyy-MM-dd");
-            DateTime fromTime = DateTime.ParseExact(bookDate + " " + booking.FromTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
-            DateTime toTime = DateTime.ParseExact(bookDate + " " + booking.ToTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
-
-            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == booking.CoachID && (x.FromTime >= fromTime && x.ToTime <= toTime)).ToList();
-
-            if (bookings.Count() > 0)
+            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == booking.CoachID);
+            foreach (var session in booking.Sessions)
             {
-                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "Booking already exists." } } });
+                string bookDate = session.BookingDate.ToString("yyyy-MM-dd");
+                DateTime fromTime = DateTime.ParseExact(bookDate + " " + session.FromTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
+                DateTime toTime = DateTime.ParseExact(bookDate + " " + session.ToTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
+
+                foreach(var bookingItem in bookings)
+                {
+                   var checkTimes =  bookingItem.Sessions.Where(x => x.FromTime >= fromTime && x.ToTime <= toTime).ToList();
+                    if (checkTimes.Count() > 0)
+                    {
+                        return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "Booking already exists." } } });
+                    }
+                }
             }
+
+            
             var coach = user.Coaches.Where(x => x.CoachId == booking.CoachID).SingleOrDefault();
             if (coach != null)
             {
@@ -2054,19 +2069,26 @@ namespace NextLevelTrainingApi.Controllers
                 user.Coaches.Add(coach);
                 _unitOfWork.UserRepository.ReplaceOne(user);
             }
+
+
+            var availableSessions = booking.Sessions.Select(x => new BookingTime {
+                    BookingDate = x.BookingDate,
+                    FromTime = DateTime.ParseExact(x.BookingDate.ToString("yyyy-MM-dd") + " " + x.FromTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture),
+                    ToTime = DateTime.ParseExact(x.BookingDate.ToString("yyyy-MM-dd") + " " + x.ToTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture)
+            }).ToList();
+
+
             Booking book = new Booking();
             book.Id = Guid.NewGuid();
             book.Amount = booking.Amount;
-            book.BookingDate = booking.BookingDate;
             book.BookingStatus = booking.BookingStatus;
             book.PaymentStatus = booking.PaymentStatus;
             book.PlayerID = booking.PlayerID;
             book.TrainingLocationID = booking.TrainingLocationID;
             book.CoachID = booking.CoachID;
             book.TransactionID = booking.TransactionID;
+            book.Sessions = availableSessions;
             book.SentDate = DateTime.Now;
-            book.FromTime = DateTime.ParseExact(bookDate + " " + booking.FromTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
-            book.ToTime = DateTime.ParseExact(bookDate + " " + booking.ToTime, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture);
             if (_unitOfWork.BookingRepository.AsQueryable().Count() > 0)
             {
                 book.BookingNumber = _unitOfWork.BookingRepository.AsQueryable().Select(x => x.BookingNumber).Max() + 1;
@@ -2086,7 +2108,7 @@ namespace NextLevelTrainingApi.Controllers
 
             var usr = _unitOfWork.UserRepository.FindById(booking.PlayerID);
 
-            EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", booking.BookingDate.ToString("dd MMM yyyy") + " " + booking.FromTime + " - " + booking.ToTime);
+            //EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", booking.BookingDate.ToString("dd MMM yyyy") + " " + booking.FromTime + " - " + booking.ToTime);
 
             var player = _unitOfWork.UserRepository.FindById(booking.PlayerID);
             if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
@@ -2108,6 +2130,7 @@ namespace NextLevelTrainingApi.Controllers
 
             var booking = _unitOfWork.BookingRepository.FindById(bookingID);
             booking.BookingStatus = "Cancelled";
+            booking.Sessions.ForEach(x => x.Status = "Cancelled");
             booking.CancelledDateTime = DateTime.Now;
             _unitOfWork.BookingRepository.ReplaceOne(booking);
 
@@ -2139,17 +2162,46 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<List<BookingViewModel>> GetBookings(BookingFilterViewModel booking)
         {
             List<BookingViewModel> bookings = new List<BookingViewModel>();
+            if(booking.StartDate.HasValue && booking.EndDate.HasValue)
+            {
+                booking.StartDate = new DateTime(booking.StartDate.Value.Year, booking.StartDate.Value.Month, booking.StartDate.Value.Day, 0, 0, 0);
+                booking.EndDate = new DateTime(booking.EndDate.Value.Year, booking.EndDate.Value.Month, booking.EndDate.Value.Day, 23, 59, 59);
+            }
 
+
+            
             if (booking.Role.ToLower() == Constants.COACH)
             {
-                bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == booking.UserID).Select(x => new
+                var tempBooking = new List<Booking>();
+                var matchedBookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == booking.UserID).ToList();
+                if (booking.StartDate.HasValue && booking.EndDate.HasValue)
+                {
+                    foreach(var matchedBooking in matchedBookings)
+                    {
+                        var matched = false;
+                        foreach(var session in matchedBooking.Sessions)
+                        {
+                            if (session.BookingDate >= booking.StartDate.Value && session.BookingDate <= booking.EndDate.Value)
+                            {
+                                matched = true;
+                                break;
+                            }
+                                
+                        }
+                        if (matched)
+                            tempBooking.Add(matchedBooking);
+                    }
+                    matchedBookings = tempBooking;
+                }
+              
+
+                bookings = matchedBookings.Select(x => new
                 BookingViewModel()
                 {
                     Amount = x.Amount,
                     BookingNumber = x.BookingNumber,
                     BookingStatus = x.BookingStatus,
                     CoachID = x.CoachID,
-                    FromTime = x.FromTime,
                     FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                     Id = x.Id,
                     Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -2157,7 +2209,6 @@ namespace NextLevelTrainingApi.Controllers
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
-                    ToTime = x.ToTime,
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
@@ -2174,7 +2225,12 @@ namespace NextLevelTrainingApi.Controllers
                     },
                     ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
                     CurrentTime = DateTime.Now,
-                    BookingDate = x.BookingDate,
+                    Sessions = x.Sessions.Select(x => new BookingTimeViewModel {
+                        BookingDate = x.BookingDate,
+                        ToTime = x.ToTime,
+                        FromTime = x.FromTime,
+                        SessionStatus = x.Status
+                    }).ToList(),
                     BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
                     {
                         BookingId = x.Id,
@@ -2191,6 +2247,7 @@ namespace NextLevelTrainingApi.Controllers
                 bookings.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 bookings.ForEach(user => user.Player.ProfileImage = string.IsNullOrEmpty(user.Player.ProfileImage) ? "" : ((user.Player.ProfileImage.Contains("http://") || user.Player.ProfileImage.Contains("https://")) ? user.Player.ProfileImage : _jwtAppSettings.AppBaseURL + user.Player.ProfileImage));
 
+                /*
                 foreach (var book in bookings)
                 {
                     List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
@@ -2212,18 +2269,41 @@ namespace NextLevelTrainingApi.Controllers
                         statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
                     }
                     book.Statuses = statuses;
-                }
+                }*/
             }
             else
             {
-                bookings = _unitOfWork.BookingRepository.FilterBy(x => x.PlayerID == booking.UserID).Select(x => new
+                var tempBooking = new List<Booking>();
+                
+                var matchedBookings = _unitOfWork.BookingRepository.FilterBy(x => x.PlayerID == booking.UserID).ToList();
+
+                if (booking.StartDate.HasValue && booking.EndDate.HasValue)
+                {
+                    foreach (var matchedBooking in matchedBookings)
+                    {
+                        var matched = false;
+                        foreach (var session in matchedBooking.Sessions)
+                        {
+                            if (session.BookingDate >= booking.StartDate.Value && session.BookingDate <= booking.EndDate.Value)
+                            {
+                                matched = true;
+                                break;
+                            }
+
+                        }
+                        if (matched)
+                            tempBooking.Add(matchedBooking);
+                    }
+                    matchedBookings = tempBooking;
+                }
+
+                bookings = matchedBookings.Select(x => new
                BookingViewModel()
                 {
                     Amount = x.Amount,
                     BookingNumber = x.BookingNumber,
                     BookingStatus = x.BookingStatus,
                     CoachID = x.CoachID,
-                    FromTime = x.FromTime,
                     FullName = _unitOfWork.UserRepository.FindById(x.CoachID).FullName,
                     Id = x.Id,
                     Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -2231,14 +2311,19 @@ namespace NextLevelTrainingApi.Controllers
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
-                    ToTime = x.ToTime,
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
                     CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
                     ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
                     CurrentTime = DateTime.Now,
-                    BookingDate = x.BookingDate,
+                    Sessions = x.Sessions.Select(x => new BookingTimeViewModel
+                    {
+                        SessionStatus = x.Status,
+                        BookingDate = x.BookingDate,
+                        ToTime = x.ToTime,
+                        FromTime = x.FromTime
+                    }).ToList(),
                     Address = _unitOfWork.UserRepository.FindById(x.CoachID).Address,
                     BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
                     {
@@ -2254,27 +2339,31 @@ namespace NextLevelTrainingApi.Controllers
 
                 bookings.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
 
+                
                 foreach (var book in bookings)
                 {
-                    List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
-                    statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
-                    if (book.RescheduledDateTime != null)
+                    foreach(var session in book.Sessions)
                     {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                        List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
+                        if (book.RescheduledDateTime != null)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                        }
+                        if (DateTime.Now.Date == session.BookingDate.Date)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = session.BookingDate });
+                        }
+                        if (DateTime.Now.Date > session.BookingDate.Date)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = session.BookingDate });
+                        }
+                        if (book.CancelledDateTime != null)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
+                        }
+                        session.Statuses = statuses;
                     }
-                    if (DateTime.Now.Date == book.BookingDate.Date)
-                    {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
-                    }
-                    if (DateTime.Now.Date > book.BookingDate.Date)
-                    {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
-                    }
-                    if (book.CancelledDateTime != null)
-                    {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
-                    }
-                    book.Statuses = statuses;
                 }
             }
             return bookings;
@@ -2292,7 +2381,6 @@ namespace NextLevelTrainingApi.Controllers
                 BookingNumber = x.BookingNumber,
                 BookingStatus = x.BookingStatus,
                 CoachID = x.CoachID,
-                FromTime = x.FromTime,
                 FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                 Id = x.Id,
                 Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -2300,7 +2388,6 @@ namespace NextLevelTrainingApi.Controllers
                 PaymentStatus = x.PaymentStatus,
                 PlayerID = x.PlayerID,
                 SentDate = x.SentDate,
-                ToTime = x.ToTime,
                 TransactionID = x.TransactionID,
                 CancelledDateTime = x.CancelledDateTime,
                 RescheduledDateTime = x.RescheduledDateTime,
@@ -2317,7 +2404,13 @@ namespace NextLevelTrainingApi.Controllers
                 },
                 ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
                 CurrentTime = DateTime.Now,
-                BookingDate = x.BookingDate,
+                Sessions = x.Sessions.Select(x => new BookingTimeViewModel
+                {
+                    SessionStatus = x.Status,
+                    BookingDate = x.BookingDate,
+                    ToTime = x.ToTime,
+                    FromTime = x.FromTime
+                }).ToList(),
                 BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
                 {
                     BookingId = x.Id,
@@ -2333,26 +2426,32 @@ namespace NextLevelTrainingApi.Controllers
             booking.ProfileImage = string.IsNullOrEmpty(booking.ProfileImage) ? "" : ((booking.ProfileImage.Contains("http://") || booking.ProfileImage.Contains("https://")) ? booking.ProfileImage : _jwtAppSettings.AppBaseURL + booking.ProfileImage);
             booking.Player.ProfileImage = string.IsNullOrEmpty(booking.Player.ProfileImage) ? "" : ((booking.Player.ProfileImage.Contains("http://") || booking.Player.ProfileImage.Contains("https://")) ? booking.Player.ProfileImage : _jwtAppSettings.AppBaseURL + booking.Player.ProfileImage);
 
-            List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
-            statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate });
-            if (booking.RescheduledDateTime != null)
-            {
-                statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = booking.RescheduledDateTime.Value });
-            }
-            if (DateTime.Now.Date == booking.BookingDate.Date)
-            {
-                statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = booking.BookingDate });
-            }
-            if (DateTime.Now.Date > booking.BookingDate.Date)
-            {
-                statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = booking.BookingDate });
-            }
-            if (booking.CancelledDateTime != null)
-            {
-                statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = booking.CancelledDateTime.Value });
-            }
+        
 
-            booking.Statuses = statuses;
+
+             foreach (var session in booking.Sessions)
+                {
+                    List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
+                    statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate });
+                    if (booking.RescheduledDateTime != null)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = booking.RescheduledDateTime.Value });
+                    }
+                    if (DateTime.Now.Date == session.BookingDate.Date)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = session.BookingDate });
+                    }
+                    if (DateTime.Now.Date > session.BookingDate.Date)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = session.BookingDate });
+                    }
+                    if (booking.CancelledDateTime != null)
+                    {
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = booking.CancelledDateTime.Value });
+                    }
+                    session.Statuses = statuses;
+                }
+            
 
             return booking;
         }
@@ -2363,8 +2462,12 @@ namespace NextLevelTrainingApi.Controllers
         {
 
             var b = _unitOfWork.BookingRepository.FindById(booking.BookingId);
-            b.FromTime = booking.FromTime;
-            b.ToTime = booking.ToTime;
+            b.Sessions = booking.Sessions.Select(x => new BookingTime {
+                BookingDate = x.BookingDate,
+                FromTime = x.FromTime,
+                ToTime = x.ToTime,
+                Status = "Rescheduled"
+            }).ToList();
             b.BookingStatus = "Rescheduled";
             b.RescheduledDateTime = DateTime.Now;
             _unitOfWork.BookingRepository.ReplaceOne(b);
@@ -2377,7 +2480,7 @@ namespace NextLevelTrainingApi.Controllers
             _unitOfWork.NotificationRepository.InsertOne(notification);
 
             var usr = _unitOfWork.UserRepository.FindById(b.PlayerID);
-            EmailHelper.SendEmail(usr.EmailID, _emailSettings, "reschedule", b.RescheduledDateTime.Value.ToString("dd MMM yyyy") + " " + booking.FromTime.ToString("hh:mm tt") + " - " + booking.ToTime.ToString("hh:mm tt"));
+            //EmailHelper.SendEmail(usr.EmailID, _emailSettings, "reschedule", b.RescheduledDateTime.Value.ToString("dd MMM yyyy") + " " + booking.FromTime.ToString("hh:mm tt") + " - " + booking.ToTime.ToString("hh:mm tt"));
 
             var player = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
@@ -2396,14 +2499,40 @@ namespace NextLevelTrainingApi.Controllers
         public ActionResult<List<string>> GetAvailableTimeByCoachId(CoachAvailabilityViewModel avalaibility)
         {
             var startDate = new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddTicks(1);
-            var endDate = new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddDays(1).AddTicks(-2);
-            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == avalaibility.CoachID && (x.FromTime >= startDate && x.ToTime <= endDate)).ToList();
+            var endDate = avalaibility.EndDate.HasValue ? new DateTime(avalaibility.EndDate.Value.Year, avalaibility.EndDate.Value.Month, avalaibility.EndDate.Value.Day) : new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddDays(1).AddTicks(-2);
+            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == avalaibility.CoachID).ToList();
+            var tempBookings = new List<Booking>();
+            foreach(var booking in tempBookings)
+            {
+                foreach(var session in booking.Sessions)
+                {
+                    if (session.FromTime >= startDate && session.ToTime <= endDate)
+                    {
+                        tempBookings.Add(booking);
+                        break;
+                    }
+                }
+
+            }
+
+            bookings = tempBookings;
+
             var user = _unitOfWork.UserRepository.FindById(avalaibility.CoachID);
             if (user == null)
             {
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
-            var slots = user.Availabilities.Where(x => x.IsWorking == true).ToList();
+            var slots = new List<Availability>();
+
+
+            if (avalaibility.EndDate.HasValue)
+            {
+                var limitedDate = new DateTime(avalaibility.EndDate.Value.Year, avalaibility.EndDate.Value.Month, avalaibility.EndDate.Value.Day,23,59,59);
+                slots = user.Availabilities.Where(x => x.IsWorking == true && x.FromTime >= startDate && x.ToTime <= limitedDate).ToList();
+
+            }
+            else
+                slots = user.Availabilities.Where(x => x.IsWorking == true).ToList();
 
             //List<string> bookedSlots = new List<string>();
             //foreach (var book in bookings)
@@ -2430,8 +2559,6 @@ namespace NextLevelTrainingApi.Controllers
                             break;
                         }
                         availableSlots.Add(new Availability() { FromTime = starttime, ToTime = endtime });
-
-
                     }
 
                     break;
@@ -2442,13 +2569,14 @@ namespace NextLevelTrainingApi.Controllers
 
             foreach (var slot in availableSlots)
             {
-                if (bookings.Where(x => slot.FromTime.TimeOfDay >= x.FromTime.TimeOfDay && slot.ToTime.TimeOfDay <= x.ToTime.TimeOfDay).Count() > 0)
+
+                if (bookings.SelectMany(x => x.Sessions).Where(x => slot.FromTime.TimeOfDay >= x.FromTime.TimeOfDay && slot.ToTime.TimeOfDay <= x.ToTime.TimeOfDay).Count() > 0)
                 {
 
                 }
                 else
                 {
-                    freeSlots.Add(slot.FromTime.ToString("hh:mm tt") + "-" + slot.ToTime.ToString("hh:mm tt"));
+                    freeSlots.Add(slot.FromTime.ToString() + "-" + slot.ToTime.ToString());
                 }
             }
 
@@ -2574,7 +2702,6 @@ namespace NextLevelTrainingApi.Controllers
                     BookingNumber = x.BookingNumber,
                     BookingStatus = x.BookingStatus,
                     CoachID = x.CoachID,
-                    FromTime = x.FromTime,
                     FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                     Id = x.Id,
                     Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -2582,13 +2709,18 @@ namespace NextLevelTrainingApi.Controllers
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
-                    ToTime = x.ToTime,
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
                     CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
                     ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
-                    BookingDate = x.BookingDate,
+                    Sessions = x.Sessions.Select(x => new BookingTimeViewModel
+                    {
+                        SessionStatus = x.Status,
+                        BookingDate = x.BookingDate,
+                        ToTime = x.ToTime,
+                        FromTime = x.FromTime
+                    }).ToList(),
                     BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
                     {
                         BookingId = x.Id,
@@ -2675,7 +2807,8 @@ namespace NextLevelTrainingApi.Controllers
                     item.ProfileImage = string.IsNullOrEmpty(item.ProfileImage) ? "" : ((item.ProfileImage.Contains("http://") || item.ProfileImage.Contains("https://")) ? item.ProfileImage : _jwtAppSettings.AppBaseURL + item.ProfileImage);
 
                     item.Posts = psts;
-                    item.Level = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id && x.BookingStatus.ToLower() == "completed").Count();
+                    var coachBookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id);
+                    item.Level = coachBookings.Sum(x => x.Sessions.Where(x => x.Status == "completed").Count());
                     item.Level = Convert.ToInt32(Math.Ceiling((double)item.Level / 50));
                     if (item.Level == 0)
                     {
@@ -2745,7 +2878,6 @@ namespace NextLevelTrainingApi.Controllers
                         BookingNumber = x.BookingNumber,
                         BookingStatus = x.BookingStatus,
                         CoachID = x.CoachID,
-                        FromTime = x.FromTime,
                         FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                         Id = x.Id,
                         Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -2753,13 +2885,18 @@ namespace NextLevelTrainingApi.Controllers
                         PaymentStatus = x.PaymentStatus,
                         PlayerID = x.PlayerID,
                         SentDate = x.SentDate,
-                        ToTime = x.ToTime,
                         TransactionID = x.TransactionID,
                         CancelledDateTime = x.CancelledDateTime,
                         RescheduledDateTime = x.RescheduledDateTime,
                         CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
                         ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
-                        BookingDate = x.BookingDate,
+                        Sessions = x.Sessions.Select(x => new BookingTimeViewModel
+                        {
+                            SessionStatus = x.Status,
+                            BookingDate = x.BookingDate,
+                            ToTime = x.ToTime,
+                            FromTime = x.FromTime
+                        }).ToList(),
                         BookingReviews = x.Reviews.Select(b => new BookingReviewViewModel()
                         {
                             BookingId = x.Id,
@@ -3064,7 +3201,6 @@ namespace NextLevelTrainingApi.Controllers
                 BookingNumber = x.BookingNumber,
                 BookingStatus = x.BookingStatus,
                 CoachID = x.CoachID,
-                FromTime = x.FromTime,
                 FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                 Id = x.Id,
                 Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
@@ -3072,7 +3208,13 @@ namespace NextLevelTrainingApi.Controllers
                 PaymentStatus = x.PaymentStatus,
                 PlayerID = x.PlayerID,
                 SentDate = x.SentDate,
-                ToTime = x.ToTime,
+                Sessions = x.Sessions.Select(x => new BookingTimeViewModel
+                {
+                    SessionStatus = x.Status,
+                    BookingDate = x.BookingDate,
+                    ToTime = x.ToTime,
+                    FromTime = x.FromTime
+                }).ToList(),
                 TransactionID = x.TransactionID,
                 CancelledDateTime = x.CancelledDateTime,
                 RescheduledDateTime = x.RescheduledDateTime,
@@ -3088,13 +3230,12 @@ namespace NextLevelTrainingApi.Controllers
                     Address = _unitOfWork.UserRepository.FindById(x.PlayerID).Address
                 },
                 ProfileImage = _unitOfWork.UserRepository.FindById(x.CoachID).ProfileImage,
-                CurrentTime = DateTime.Now,
-                BookingDate = x.BookingDate
+                CurrentTime = DateTime.Now
             }
                 ).ToList();
             List<Guid> playerIds = bookings.Select(x => x.PlayerID).ToList();
             CoachSummaryViewModel cs = new CoachSummaryViewModel();
-            cs.BookingsCount = bookings.Where(x => x.BookingStatus.ToLower() == "done" && x.BookingDate > midnight).Select(x => x.PlayerID).Distinct().Count();
+            cs.BookingsCount = bookings.Where(x => x.BookingStatus.ToLower() == "done" && x.Sessions.Any(y => y.BookingDate > midnight)).Select(x => x.PlayerID).Distinct().Count();
             cs.TotalBookingsCount = bookings.Where(x => x.BookingStatus.ToLower() == "done").Select(x => x.PlayerID).Distinct().Count();
             cs.Players = _unitOfWork.UserRepository.FilterBy(x => playerIds.Contains(x.Id)).Select(x => new UserDataViewModel()
             {

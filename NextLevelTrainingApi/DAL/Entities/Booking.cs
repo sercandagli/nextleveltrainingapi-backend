@@ -20,11 +20,8 @@ namespace NextLevelTrainingApi.DAL.Entities
         public Guid PlayerID { get; set; }
         public Guid CoachID { get; set; }
         public int BookingNumber { get; set; }
-        public DateTime FromTime { get; set; }
-        public DateTime ToTime { get; set; }
+        public List<BookingTime> Sessions { get; set; }
         public DateTime SentDate { get; set; }
-        public DateTime BookingDate { get; set; }
-
         public Guid TrainingLocationID { get; set; }
         public decimal Amount { get; set; }
         public string PaymentStatus { get; set; }
@@ -34,4 +31,6 @@ namespace NextLevelTrainingApi.DAL.Entities
         public DateTime? RescheduledDateTime { get; set; }
         public DateTime? CancelledDateTime { get; set; }
     }
+
+
 }
