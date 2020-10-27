@@ -324,7 +324,7 @@ namespace NextLevelTrainingApi.Controllers
                     }
                     else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
                     {
-
+                         ApplePushNotification(user.DeviceToken, notification);
                     }
                 }
             }
@@ -2108,7 +2108,13 @@ namespace NextLevelTrainingApi.Controllers
 
             var usr = _unitOfWork.UserRepository.FindById(booking.PlayerID);
 
-            //EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", booking.BookingDate.ToString("dd MMM yyyy") + " " + booking.FromTime + " - " + booking.ToTime);
+            var mailBookingSessions = string.Empty;
+
+            foreach (var session in booking.Sessions)
+                mailBookingSessions += session.BookingDate.ToString("dd MMM yyyy") + " " + session.FromTime + " - " + session.ToTime + ",";
+
+            mailBookingSessions = mailBookingSessions.Substring(0, mailBookingSessions.Length - 1);
+            EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", mailBookingSessions);
 
             var player = _unitOfWork.UserRepository.FindById(booking.PlayerID);
             if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
@@ -2117,7 +2123,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.APPLE_DEVICE)
             {
-
+                 ApplePushNotification(user.DeviceToken, notification);
             }
             return book;
 
@@ -2151,7 +2157,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.APPLE_DEVICE)
             {
-
+                 ApplePushNotification(user.DeviceToken, notification);
             }
             return booking;
 
@@ -2489,7 +2495,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.APPLE_DEVICE)
             {
-
+                 ApplePushNotification(player.DeviceToken, notification);
             }
             return b;
         }
@@ -3063,7 +3069,7 @@ namespace NextLevelTrainingApi.Controllers
                     }
                     else if (cUser.DeviceType != null && Convert.ToString(cUser.DeviceType).ToLower() == Constants.APPLE_DEVICE)
                     {
-
+                         ApplePushNotification(cUser.DeviceToken, notification);
                     }
 
                 }
@@ -3086,7 +3092,7 @@ namespace NextLevelTrainingApi.Controllers
                         }
                         else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
                         {
-
+                             ApplePushNotification(user.DeviceToken, notification);
                         }
                     }
                 }
@@ -3115,7 +3121,7 @@ namespace NextLevelTrainingApi.Controllers
                     }
                     else if (cUser.DeviceType != null && Convert.ToString(cUser.DeviceType).ToLower() == Constants.APPLE_DEVICE)
                     {
-
+                         ApplePushNotification(cUser.DeviceToken, notification);
                     }
                 }
 
@@ -3140,7 +3146,7 @@ namespace NextLevelTrainingApi.Controllers
                         }
                         else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
                         {
-
+                             ApplePushNotification(user.DeviceToken, notification);
                         }
                     }
                 }
@@ -3416,7 +3422,7 @@ namespace NextLevelTrainingApi.Controllers
         private async Task ApplePushNotification(string deviceToken, Notification notification)
         {
             HttpClient httpClient = new HttpClient();
-            ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgUL33Lbq2AOTiInGG15tB+pP0POWC6mpUtJlt+qKtJ4GgCgYIKoZIzj0DAQehRANCAAQYw0UCDNksYH/nKhxP4xEExt/q5lE8w6OFAx37l14j6UZ0CDDu1DjfGt/b5AmpBw+pWhBhEMNAvGHjBW4cM+mZ", P8PrivateKeyId = "7PRJ27R69X", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
+            ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
             AppleNotification appleNotification = new AppleNotification();
             appleNotification.Aps.AlertBody = notification.Text;
             var apn = new ApnSender(apnSettings, httpClient);
