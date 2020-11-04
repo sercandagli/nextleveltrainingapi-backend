@@ -14,5 +14,7 @@ namespace NextLevelTrainingApi.Helper
         public const string COACH = "coach";
         public const string ANDRIOD_DEVICE = "android";
         public const string APPLE_DEVICE = "ios";
+
+        public const string ScheduledPushNotification = "ScheduledPushNotificationsNextLevel";
     }
 }

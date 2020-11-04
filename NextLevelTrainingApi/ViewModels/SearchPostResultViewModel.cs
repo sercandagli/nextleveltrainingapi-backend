@@ -9,6 +9,7 @@ namespace NextLevelTrainingApi.ViewModels
     {
         public List<UserDataViewModel> Players { get; set; }
         public List<UserDataViewModel> Coaches { get; set; }
+        public List<UserDataViewModel> Featured { get; set; }
         public List<PostDataViewModel> Posts { get; set; }
     }
 

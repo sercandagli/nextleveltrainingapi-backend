@@ -7,7 +7,6 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -57,7 +56,9 @@ namespace NextLevelTrainingApi.Controllers
                 DeviceID = userVM.DeviceID,
                 DeviceType = userVM.DeviceType,
                 DeviceToken = userVM.DeviceToken,
-                Featured = userVM.Featured
+                RegisterDate = DateTime.Now,
+                Featured = false,
+                PaypalPaymentId = ""
             };
 
             _unitOfWork.UserRepository.InsertOne(user);
@@ -156,7 +157,8 @@ namespace NextLevelTrainingApi.Controllers
                 user.DeviceID = loginModel.DeviceID;
                 user.DeviceType = loginModel.DeviceType;
                 user.DeviceToken = loginModel.DeviceToken;
-                user.Featured = loginModel.Featured;
+                user.Featured = false;
+                user.PaypalPaymentId = "";
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -305,6 +307,9 @@ namespace NextLevelTrainingApi.Controllers
             EmailHelper.SendEmail(user.EmailID, _emailSettings, "resetpassword", pwd);
             return true;
         }
+
+
+     
 
 
         [Route("AppleLogin")]

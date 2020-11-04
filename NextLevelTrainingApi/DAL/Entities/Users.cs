@@ -36,6 +36,8 @@ namespace NextLevelTrainingApi.DAL.Entities
 
         public string Address { get; set; }
 
+        public DateTime RegisterDate { get; set; }
+
         public string EmailID { get; set; }
         public string DeviceID { get; set; }
         public string DeviceToken { get; set; }
@@ -45,6 +47,8 @@ namespace NextLevelTrainingApi.DAL.Entities
 
         public string Password { get; set; }
         public string AccessToken { get; set; }
+
+        public string PaypalPaymentId { get; set; }
 
         public string SocialLoginType { get; set; }
         public int? ProfileImageHeight { get; set; }

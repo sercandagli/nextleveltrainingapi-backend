@@ -78,6 +78,7 @@ namespace NextLevelTrainingApi.Controllers
             usr.Address = user.Address;
             usr.Lat = user.Lat;
             usr.Lng = user.Lng;
+            usr.Featured = user.Featured;
             usr.PostCode = user.PostCode;
             usr.Rate = user.Rate;
             usr.ProfileImageHeight = user.ProfileImageHeight;
@@ -95,7 +96,7 @@ namespace NextLevelTrainingApi.Controllers
                 CoachID = x.CoachID,
                 FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                 Id = x.Id,
-                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                 TrainingLocationID = x.TrainingLocationID,
                 PaymentStatus = x.PaymentStatus,
                 PlayerID = x.PlayerID,
@@ -374,20 +375,22 @@ namespace NextLevelTrainingApi.Controllers
 
             _unitOfWork.PostRepository.ReplaceOne(post);
 
+            var postOwner = _unitOfWork.UserRepository.FindById(post.UserId);
+
             Notification notification = new Notification();
             notification.Id = Guid.NewGuid();
             notification.Text = $"{user.FullName} liked your post";
             notification.CreatedDate = DateTime.Now;
-            notification.UserId = _userContext.UserID;
+            notification.UserId = postOwner.Id;
             notification.Image = user.ProfileImage;
             _unitOfWork.NotificationRepository.InsertOne(notification);
-            if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            if (postOwner.DeviceType != null && Convert.ToString(postOwner.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
             {
-                await AndriodPushNotification(user.DeviceToken, notification);
+                await AndriodPushNotification(postOwner.DeviceToken, notification);
             }
-            else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            else if (postOwner.DeviceType != null && Convert.ToString(postOwner.DeviceType).ToLower() == Constants.APPLE_DEVICE)
             {
-                await ApplePushNotification(user.DeviceToken, notification);
+                await ApplePushNotification(postOwner.DeviceToken, notification);
             }
 
             return post;
@@ -1168,6 +1171,23 @@ namespace NextLevelTrainingApi.Controllers
 
         }
 
+
+        [Route("UpdateDeviceToken")]
+        [HttpPost]
+        public ActionResult UpdateDeviceToken(UpdateDeviceTokenRequest updateDeviceTokenRequest)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            user.DeviceToken = updateDeviceTokenRequest.DeviceToken;
+            _unitOfWork.UserRepository.ReplaceOne(user);
+            return Ok();
+        }
+
         [HttpPost]
         [Route("UploadFile")]
         [Consumes("multipart/form-data")]
@@ -1236,7 +1256,7 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     loc.ImageUrl = "/Upload/TrainingLocation/" + newFileName;
 
-                    var toremove = user.TrainingLocations.Where(x => x.Id == file.Id).SingleOrDefault();
+                    var toremove = user.TrainingLocations.Where(x => x.Id == file.Id).FirstOrDefault();
                     user.TrainingLocations.Remove(toremove);
                     user.TrainingLocations.Add(loc);
                     _unitOfWork.UserRepository.ReplaceOne(user);
@@ -1422,7 +1442,7 @@ namespace NextLevelTrainingApi.Controllers
                     CoachID = x.CoachID,
                     FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                     Id = x.Id,
-                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                     TrainingLocationID = x.TrainingLocationID,
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
@@ -1860,6 +1880,24 @@ namespace NextLevelTrainingApi.Controllers
 
             _unitOfWork.MessageRepository.InsertOne(message);
 
+            Notification notification = new Notification();
+            notification.Id = Guid.NewGuid();
+            notification.Text = "You have a message";
+            notification.CreatedDate = DateTime.Now;
+            notification.UserId = messageVM.ReceiverId;
+            _unitOfWork.NotificationRepository.InsertOne(notification);
+
+            var usr = _unitOfWork.UserRepository.FindById(messageVM.ReceiverId);
+
+            if (usr.DeviceType != null && Convert.ToString(usr.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                AndriodPushNotification(usr.DeviceToken, notification);
+            }
+            else if (usr.DeviceType != null && Convert.ToString(usr.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+                ApplePushNotification(usr.DeviceToken, notification);
+            }
+
             return messageVM;
 
         }
@@ -2101,9 +2139,9 @@ namespace NextLevelTrainingApi.Controllers
 
             Notification notification = new Notification();
             notification.Id = Guid.NewGuid();
-            notification.Text = "Booking created successfully.";
+            notification.Text = "New booking received.";
             notification.CreatedDate = DateTime.Now;
-            notification.UserId = booking.PlayerID;
+            notification.UserId = booking.CoachID;
             _unitOfWork.NotificationRepository.InsertOne(notification);
 
             var usr = _unitOfWork.UserRepository.FindById(booking.PlayerID);
@@ -2116,14 +2154,14 @@ namespace NextLevelTrainingApi.Controllers
             mailBookingSessions = mailBookingSessions.Substring(0, mailBookingSessions.Length - 1);
             EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", mailBookingSessions);
 
-            var player = _unitOfWork.UserRepository.FindById(booking.PlayerID);
-            if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            var coachUser = _unitOfWork.UserRepository.FindById(booking.CoachID);
+            if (coachUser.DeviceType != null && Convert.ToString(coachUser.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
             {
-                AndriodPushNotification(player.DeviceToken, notification);
+                AndriodPushNotification(coachUser.DeviceToken, notification);
             }
-            else if (player.DeviceType != null && Convert.ToString(player.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            else if (coachUser.DeviceType != null && Convert.ToString(coachUser.DeviceType).ToLower() == Constants.APPLE_DEVICE)
             {
-                 ApplePushNotification(user.DeviceToken, notification);
+                 ApplePushNotification(coachUser.DeviceToken, notification);
             }
             return book;
 
@@ -2210,12 +2248,15 @@ namespace NextLevelTrainingApi.Controllers
                     CoachID = x.CoachID,
                     FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                     Id = x.Id,
-                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                     TrainingLocationID = x.TrainingLocationID,
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
                     TransactionID = x.TransactionID,
+                    FromTime = x.FromTime,
+                    ToTime = x.ToTime,
+                    BookingDate = x.BookingDate,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
                     CoachRate = _unitOfWork.UserRepository.FindById(x.CoachID).Rate,
@@ -2253,29 +2294,52 @@ namespace NextLevelTrainingApi.Controllers
                 bookings.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 bookings.ForEach(user => user.Player.ProfileImage = string.IsNullOrEmpty(user.Player.ProfileImage) ? "" : ((user.Player.ProfileImage.Contains("http://") || user.Player.ProfileImage.Contains("https://")) ? user.Player.ProfileImage : _jwtAppSettings.AppBaseURL + user.Player.ProfileImage));
 
-                /*
+
                 foreach (var book in bookings)
                 {
-                    List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
-                    statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
+                    foreach (var session in book.Sessions)
+                    {
+                        List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
+                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
+                        if (book.RescheduledDateTime != null)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                        }
+                        if (DateTime.Now.Date == session.BookingDate.Date)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = session.BookingDate });
+                        }
+                        if (DateTime.Now.Date > session.BookingDate.Date)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = session.BookingDate });
+                        }
+                        if (book.CancelledDateTime != null)
+                        {
+                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
+                        }
+                        session.Statuses = statuses;
+                    }
+                    List<BookingStatusViewModel> rootStatutes = new List<BookingStatusViewModel>();
+
+                    rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
                     if (book.RescheduledDateTime != null)
                     {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
                     }
                     if (DateTime.Now.Date == book.BookingDate.Date)
                     {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
                     }
                     if (DateTime.Now.Date > book.BookingDate.Date)
                     {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
                     }
                     if (book.CancelledDateTime != null)
                     {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
                     }
-                    book.Statuses = statuses;
-                }*/
+                    book.Statuses = rootStatutes;
+                }
             }
             else
             {
@@ -2312,11 +2376,14 @@ namespace NextLevelTrainingApi.Controllers
                     CoachID = x.CoachID,
                     FullName = _unitOfWork.UserRepository.FindById(x.CoachID).FullName,
                     Id = x.Id,
-                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                     TrainingLocationID = x.TrainingLocationID,
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
                     SentDate = x.SentDate,
+                    FromTime = x.FromTime,
+                    ToTime = x.ToTime,
+                    BookingDate = x.BookingDate,
                     TransactionID = x.TransactionID,
                     CancelledDateTime = x.CancelledDateTime,
                     RescheduledDateTime = x.RescheduledDateTime,
@@ -2370,6 +2437,27 @@ namespace NextLevelTrainingApi.Controllers
                         }
                         session.Statuses = statuses;
                     }
+
+                    List<BookingStatusViewModel> rootStatutes = new List<BookingStatusViewModel>();
+
+                    rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
+                    if (book.RescheduledDateTime != null)
+                    {
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                    }
+                    if (DateTime.Now.Date == book.BookingDate.Date)
+                    {
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
+                    }
+                    if (DateTime.Now.Date > book.BookingDate.Date)
+                    {
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
+                    }
+                    if (book.CancelledDateTime != null)
+                    {
+                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
+                    }
+                    book.Statuses = rootStatutes;
                 }
             }
             return bookings;
@@ -2389,11 +2477,14 @@ namespace NextLevelTrainingApi.Controllers
                 CoachID = x.CoachID,
                 FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                 Id = x.Id,
-                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                 TrainingLocationID = x.TrainingLocationID,
                 PaymentStatus = x.PaymentStatus,
                 PlayerID = x.PlayerID,
                 SentDate = x.SentDate,
+                FromTime = x.FromTime,
+                ToTime = x.ToTime,
+                BookingDate = x.BookingDate,
                 TransactionID = x.TransactionID,
                 CancelledDateTime = x.CancelledDateTime,
                 RescheduledDateTime = x.RescheduledDateTime,
@@ -2432,10 +2523,29 @@ namespace NextLevelTrainingApi.Controllers
             booking.ProfileImage = string.IsNullOrEmpty(booking.ProfileImage) ? "" : ((booking.ProfileImage.Contains("http://") || booking.ProfileImage.Contains("https://")) ? booking.ProfileImage : _jwtAppSettings.AppBaseURL + booking.ProfileImage);
             booking.Player.ProfileImage = string.IsNullOrEmpty(booking.Player.ProfileImage) ? "" : ((booking.Player.ProfileImage.Contains("http://") || booking.Player.ProfileImage.Contains("https://")) ? booking.Player.ProfileImage : _jwtAppSettings.AppBaseURL + booking.Player.ProfileImage);
 
-        
+            List<BookingStatusViewModel> rootStatutes = new List<BookingStatusViewModel>();
+
+            rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate });
+            if (booking.RescheduledDateTime != null)
+            {
+                rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = booking.RescheduledDateTime.Value });
+            }
+            if (DateTime.Now.Date == booking.BookingDate.Date)
+            {
+                rootStatutes.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = booking.BookingDate });
+            }
+            if (DateTime.Now.Date > booking.BookingDate.Date)
+            {
+                rootStatutes.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = booking.BookingDate });
+            }
+            if (booking.CancelledDateTime != null)
+            {
+                rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = booking.CancelledDateTime.Value });
+            }
+            booking.Statuses = rootStatutes;
 
 
-             foreach (var session in booking.Sessions)
+            foreach (var session in booking.Sessions)
                 {
                     List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
                     statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate });
@@ -2461,6 +2571,7 @@ namespace NextLevelTrainingApi.Controllers
 
             return booking;
         }
+
 
         [HttpPost]
         [Route("RescheduleBooking")]
@@ -2502,24 +2613,47 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("GetAvailableTimeByCoachId")]
-        public ActionResult<List<string>> GetAvailableTimeByCoachId(CoachAvailabilityViewModel avalaibility)
+        public ActionResult<List<FreeSlotsViewModel>> GetAvailableTimeByCoachId(CoachAvailabilityViewModel avalaibility)
         {
             var startDate = new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddTicks(1);
-            var endDate = avalaibility.EndDate.HasValue ? new DateTime(avalaibility.EndDate.Value.Year, avalaibility.EndDate.Value.Month, avalaibility.EndDate.Value.Day) : new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddDays(1).AddTicks(-2);
+            var endDate = avalaibility.EndDate.HasValue ? new DateTime(avalaibility.EndDate.Value.Year, avalaibility.EndDate.Value.Month, avalaibility.EndDate.Value.Day).AddDays(1).AddTicks(-2) : new DateTime(avalaibility.date.Year, avalaibility.date.Month, avalaibility.date.Day).AddDays(1).AddTicks(-2);
             var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == avalaibility.CoachID).ToList();
             var tempBookings = new List<Booking>();
-            foreach(var booking in tempBookings)
+            if (avalaibility.RequestedDates.Any())
             {
-                foreach(var session in booking.Sessions)
+                foreach(var date in avalaibility.RequestedDates)
                 {
-                    if (session.FromTime >= startDate && session.ToTime <= endDate)
+                    var sd = new DateTime(date.Year, date.Month, date.Day).AddTicks(1);
+                    var ed = new DateTime(date.Year, date.Month, date.Day).AddDays(1).AddTicks(-2);
+                    foreach (var booking in bookings)
                     {
-                        tempBookings.Add(booking);
-                        break;
+                        foreach (var session in booking.Sessions)
+                        {
+                            if (session.FromTime >= sd && session.ToTime <= ed)
+                            {
+                                tempBookings.Add(booking);
+                                break;
+                            }
+                        }
                     }
                 }
-
             }
+            else
+            {
+               
+                foreach (var booking in bookings)
+                {
+                    foreach (var session in booking.Sessions)
+                    {
+                        if (session.FromTime >= startDate && session.ToTime <= endDate)
+                        {
+                            tempBookings.Add(booking);
+                            break;
+                        }
+                    }
+                }
+            }
+           
 
             bookings = tempBookings;
 
@@ -2531,47 +2665,80 @@ namespace NextLevelTrainingApi.Controllers
             var slots = new List<Availability>();
 
 
-            if (avalaibility.EndDate.HasValue)
-            {
-                var limitedDate = new DateTime(avalaibility.EndDate.Value.Year, avalaibility.EndDate.Value.Month, avalaibility.EndDate.Value.Day,23,59,59);
-                slots = user.Availabilities.Where(x => x.IsWorking == true && x.FromTime >= startDate && x.ToTime <= limitedDate).ToList();
-
-            }
-            else
-                slots = user.Availabilities.Where(x => x.IsWorking == true).ToList();
+          
+           slots = user.Availabilities.Where(x => x.IsWorking == true).ToList();
 
             //List<string> bookedSlots = new List<string>();
             //foreach (var book in bookings)
             //{
             //    bookedSlots.Add(book.FromTime.ToString("hh:mm tt") + " - " + book.ToTime.ToString("hh:mm tt"));
             //}
-            string day = avalaibility.date.DayOfWeek.ToString().ToLower();
-
             List<Availability> availableSlots = new List<Availability>();
 
-            foreach (var slot in slots)
+            if (avalaibility.RequestedDates.Any())
             {
-                if (day == slot.Day.ToLower())
+                foreach (var date in avalaibility.RequestedDates)
                 {
-                    DateTime start = slot.FromTime;
-                    DateTime end = slot.FromTime;
+                    string day = date.DayOfWeek.ToString().ToLower();
 
-                    for (int i = 0; i < 24; i++)
+                    foreach (var slot in slots)
                     {
-                        DateTime starttime = start.AddHours(i);
-                        DateTime endtime = end.AddHours(i + 1);
-                        if (endtime > slot.ToTime)
+                        if (day == slot.Day.ToLower())
                         {
+                            DateTime start = slot.FromTime;
+                            DateTime end = slot.FromTime;
+
+                            for (int i = 0; i < 24; i++)
+                            {
+                                DateTime starttime = start.AddHours(i);
+                                DateTime endtime = end.AddHours(i + 1);
+                                if (endtime > slot.ToTime)
+                                {
+                                    break;
+                                }
+                                availableSlots.Add(new Availability() { FromTime = new DateTime(date.Year, date.Month, date.Day, starttime.Hour, starttime.Minute, starttime.Second), ToTime = new DateTime(date.Year, date.Month, date.Day, endtime.Hour, endtime.Minute, endtime.Second), Day = date.ToString("yyyy-MM-ddTHH:mm:ss.sssZ") });
+                            }
+
                             break;
                         }
-                        availableSlots.Add(new Availability() { FromTime = starttime, ToTime = endtime });
                     }
+                }
+            }
+            else
+            {
+                var endLimit = avalaibility.EndDate.HasValue ? avalaibility.EndDate.Value.AddDays(1) : avalaibility.date.AddDays(1);
+                for (var currentDate = avalaibility.date; currentDate < endLimit; currentDate = currentDate.AddDays(1))
+                {
+                    string day = currentDate.DayOfWeek.ToString().ToLower();
 
-                    break;
+                    foreach (var slot in slots)
+                    {
+                        if (day == slot.Day.ToLower())
+                        {
+                            DateTime start = slot.FromTime;
+                            DateTime end = slot.FromTime;
+
+                            for (int i = 0; i < 24; i++)
+                            {
+                                DateTime starttime = start.AddHours(i);
+                                DateTime endtime = end.AddHours(i + 1);
+                                if (endtime > slot.ToTime)
+                                {
+                                    break;
+                                }
+                                availableSlots.Add(new Availability() { FromTime = new DateTime(currentDate.Year, currentDate.Month, currentDate.Day, starttime.Hour, starttime.Minute, starttime.Second), ToTime = new DateTime(currentDate.Year, currentDate.Month, currentDate.Day, endtime.Hour, endtime.Minute, endtime.Second), Day = currentDate.ToString("yyyy-MM-ddTHH:mm:ss.sssZ") });
+                            }
+
+                            break;
+                        }
+                    }
                 }
             }
 
-            List<string> freeSlots = new List<string>();
+           
+            
+
+            List<FreeSlotsViewModel> freeSlots = new List<FreeSlotsViewModel>();
 
             foreach (var slot in availableSlots)
             {
@@ -2582,7 +2749,15 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 else
                 {
-                    freeSlots.Add(slot.FromTime.ToString() + "-" + slot.ToTime.ToString());
+
+                    freeSlots.Add(new FreeSlotsViewModel
+                    {
+                        FromTime  = slot.FromTime.ToString("hh:mm tt"),
+                        ToTime = slot.ToTime.AddMinutes(-15).ToString("hh:mm tt"),
+                        BookingDate = slot.Day,
+                        TimeTag = slot.FromTime.ToString("hh:mm tt") + "-" + slot.ToTime.AddMinutes(-15).ToString("hh:mm tt")
+
+                    });
                 }
             }
 
@@ -2606,6 +2781,24 @@ namespace NextLevelTrainingApi.Controllers
 
             return travel;
 
+        }
+
+
+        [HttpPost]
+        [Route("UpdatePaymentDetails")]
+        public ActionResult UpdatePaymentDetails(UpdatePaymentDetailsViewModel viewModel)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            user.PaypalPaymentId = viewModel.PaypalPaymentId;
+            user.Featured = true;
+            _unitOfWork.UserRepository.ReplaceOne(user);
+
+            return Ok();
         }
 
 
@@ -2656,6 +2849,7 @@ namespace NextLevelTrainingApi.Controllers
                     user.ProfileImage = pUser.ProfileImage;
                     user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
                     user.CreatedBy = pUser.FullName;
+                    
 
                     try
                     {
@@ -2690,6 +2884,7 @@ namespace NextLevelTrainingApi.Controllers
                     VerificationDocument = x.VerificationDocument,
                     PostCode = x.PostCode,
                     AboutUs = x.AboutUs,
+                    Featured = x.Featured,
                     Achievements = x.Achievements,
                     Accomplishment = x.Accomplishment,
                     Lat = x.Lat,
@@ -2700,6 +2895,8 @@ namespace NextLevelTrainingApi.Controllers
                     // Posts = _unitOfWork.PostRepository.FilterBy(p => p.UserId == x.Id).ToList()
                     //Bookings = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == x.Id).ToList()
                 }).ToList();
+                coaches.ForEach(user => user.Availabilities = _unitOfWork.UserRepository.FindById(user.Id).Availabilities.Select(x => new AvailabilityViewModel { Day = x.Day,FromTime = x.FromTime.ToString(),ToTime = x.ToTime.ToString(),IsWorking = x.IsWorking}).ToList());
+
                 coaches.ForEach(user => user.Posts.ForEach(x => x.MediaURL = _jwtAppSettings.AppBaseURL + x.MediaURL));
                 coaches.ForEach(user => user.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == user.Id).Select(x => new
                  BookingViewModel()
@@ -2710,7 +2907,7 @@ namespace NextLevelTrainingApi.Controllers
                     CoachID = x.CoachID,
                     FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                     Id = x.Id,
-                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                    Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                     TrainingLocationID = x.TrainingLocationID,
                     PaymentStatus = x.PaymentStatus,
                     PlayerID = x.PlayerID,
@@ -2756,6 +2953,33 @@ namespace NextLevelTrainingApi.Controllers
                     Qualifications = x.Qualifications,
                     TrainingLocations = x.TrainingLocations,
                     Rate = x.Rate,
+                    Featured = x.Featured,
+                    VerificationDocument = x.VerificationDocument,
+                    PostCode = x.PostCode,
+                    AboutUs = x.AboutUs,
+                    Achievements = x.Achievements,
+                    Accomplishment = x.Accomplishment,
+                    Experiences = x.Experiences,
+                    Lat = x.Lat,
+                    Lng = x.Lng
+                }).ToList();
+
+
+                var featuredUsers = _unitOfWork.UserRepository.FilterBy(x => x.Id != _userContext.UserID && userIds.Contains(x.Id) && x.Featured).Select(x => new UserDataViewModel()
+                {
+                    Id = x.Id,
+                    Role = x.Role,
+                    Address = x.Address,
+                    EmailID = x.EmailID,
+                    FullName = x.FullName,
+                    MobileNo = x.MobileNo,
+                    ProfileImage = x.ProfileImage,
+                    DBSCeritificate = x.DBSCeritificate,
+                    Teams = x.Teams,
+                    Qualifications = x.Qualifications,
+                    TrainingLocations = x.TrainingLocations,
+                    Rate = x.Rate,
+                    Featured = x.Featured,
                     VerificationDocument = x.VerificationDocument,
                     PostCode = x.PostCode,
                     AboutUs = x.AboutUs,
@@ -2837,12 +3061,31 @@ namespace NextLevelTrainingApi.Controllers
                     //item.BookingCount = _unitOfWork.BookingRepository.FilterBy(x => x.PlayerID == item.Id && x.BookingStatus.ToLower() != "cancelled").Count();
                 }
 
+                foreach (var item in featuredUsers)
+                {
+                    item.TrainingLocations.ForEach(x => x.ImageUrl = string.IsNullOrEmpty(x.ImageUrl) ? "" : _jwtAppSettings.AppBaseURL + x.ImageUrl);
+                    if (item.DBSCeritificate != null)
+                    {
+                        item.DBSCeritificate.Path = string.IsNullOrEmpty(item.DBSCeritificate.Path) ? "" : _jwtAppSettings.AppBaseURL + item.DBSCeritificate.Path;
+                    }
+
+                    if (item.VerificationDocument != null)
+                    {
+                        item.VerificationDocument.Path = string.IsNullOrEmpty(item.VerificationDocument.Path) ? "" : _jwtAppSettings.AppBaseURL + item.VerificationDocument.Path;
+                    }
+                    item.ProfileImage = string.IsNullOrEmpty(item.ProfileImage) ? "" : ((item.ProfileImage.Contains("http://") || item.ProfileImage.Contains("https://")) ? item.ProfileImage : _jwtAppSettings.AppBaseURL + item.ProfileImage);
+                    //item.BookingCount = _unitOfWork.BookingRepository.FilterBy(x => x.PlayerID == item.Id && x.BookingStatus.ToLower() != "cancelled").Count();
+                }
+
 
                 coaches.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
                 players.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+                featuredUsers.ForEach(user => user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage));
+
                 SearchPostResultViewModel searchResult = new SearchPostResultViewModel();
                 searchResult.Coaches = coaches;
                 searchResult.Players = players;
+                searchResult.Featured = featuredUsers;
                 searchResult.Posts = posts;
 
                 return searchResult;
@@ -2858,6 +3101,7 @@ namespace NextLevelTrainingApi.Controllers
                     EmailID = x.EmailID,
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
+                    Featured = x.Featured,
                     ProfileImage = x.ProfileImage,
                     DBSCeritificate = x.DBSCeritificate,
                     Teams = x.Teams,
@@ -2877,7 +3121,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 foreach (var item in users)
                 {
-                    item.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id).Select(x => new
+                     item.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == item.Id).Select(x => new
                 BookingViewModel()
                     {
                         Amount = x.Amount,
@@ -2886,7 +3130,7 @@ namespace NextLevelTrainingApi.Controllers
                         CoachID = x.CoachID,
                         FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                         Id = x.Id,
-                        Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                        Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                         TrainingLocationID = x.TrainingLocationID,
                         PaymentStatus = x.PaymentStatus,
                         PlayerID = x.PlayerID,
@@ -2934,6 +3178,7 @@ namespace NextLevelTrainingApi.Controllers
                 users.ForEach(user => user.Posts.ForEach(x => x.MediaURL = _jwtAppSettings.AppBaseURL + x.MediaURL));
                 var players = users.Where(x => x.Role.ToLower() == Constants.PLAYER).ToList();
                 var coaches = users.Where(x => x.Role.ToLower() == Constants.COACH).ToList();
+                var featuredUsers = users.Where(x => x.Featured).ToList();
 
                 coaches.ForEach(x => x.Bookings.ForEach(b => b.BookingReviews.ForEach(x => x.PlayerProfileImage = x.PlayerProfileImage != null ? ((x.PlayerProfileImage.Contains("http://") || x.PlayerProfileImage.Contains("https:/")) ? x.PlayerProfileImage : _jwtAppSettings.AppBaseURL + x.PlayerProfileImage) : "")));
                 foreach (var item in coaches)
@@ -2942,7 +3187,7 @@ namespace NextLevelTrainingApi.Controllers
                     int count = _unitOfWork.BookingRepository.FilterBy(b => b.CoachID == item.Id).SelectMany(r => r.Reviews).Count();
                     item.AverageBookingRating = count == 0 ? "New" : (total / count).ToString();
                     item.Bookings.ForEach(b => b.BookingReviews.ForEach(r => r.PlayerProfileImage = string.IsNullOrEmpty(r.PlayerProfileImage) ? "" : ((r.PlayerProfileImage.Contains("http://") || r.PlayerProfileImage.Contains("https://")) ? r.PlayerProfileImage : _jwtAppSettings.AppBaseURL + r.PlayerProfileImage)));
-
+                    
                     List<Guid> hPostIds = item.HiddenPosts.Select(x => x.PostId).ToList();
                     var psts = _unitOfWork.PostRepository.FilterBy(x => x.UserId == item.Id && !hPostIds.Contains(x.Id)).Select(post => new PostDataViewModel()
                     {
@@ -2956,6 +3201,7 @@ namespace NextLevelTrainingApi.Controllers
                         NumberOfLikes = post.NumberOfLikes,
                         UserId = post.UserId
                     }).ToList();
+                    item.Availabilities = _unitOfWork.UserRepository.FindById(item.Id).Availabilities.Select(x => new AvailabilityViewModel { Day = x.Day, FromTime = x.FromTime.ToString(), ToTime = x.ToTime.ToString(), IsWorking = x.IsWorking }).ToList();
 
                     foreach (var p in psts)
                     {
@@ -2997,6 +3243,7 @@ namespace NextLevelTrainingApi.Controllers
                     user.ProfileImage = pUser.ProfileImage;
                     user.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
                     user.CreatedBy = pUser.FullName;
+                    
                     try
                     {
                         //string path = item.MediaURL.Replace(baseUrl + "/", "");
@@ -3015,6 +3262,7 @@ namespace NextLevelTrainingApi.Controllers
                 SearchPostResultViewModel searchResult = new SearchPostResultViewModel();
                 searchResult.Coaches = coaches;
                 searchResult.Players = players;
+                searchResult.Featured = featuredUsers;
                 searchResult.Posts = posts;
 
                 return searchResult;
@@ -3209,7 +3457,7 @@ namespace NextLevelTrainingApi.Controllers
                 CoachID = x.CoachID,
                 FullName = _unitOfWork.UserRepository.FindById(x.PlayerID).FullName,
                 Id = x.Id,
-                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).SingleOrDefault(),
+                Location = _unitOfWork.UserRepository.AsQueryable().SelectMany(z => z.TrainingLocations).Where(t => t.Id == x.TrainingLocationID).FirstOrDefault(),
                 TrainingLocationID = x.TrainingLocationID,
                 PaymentStatus = x.PaymentStatus,
                 PlayerID = x.PlayerID,
@@ -3402,7 +3650,14 @@ namespace NextLevelTrainingApi.Controllers
             googleNotification.Data = new AndroidPushNotificationsModel {
                 Image = notification.Image,
                 Title = notification.Text,
-                Message = notification.Text
+                Message = notification.Text,
+                Collapse_Key = "type_a",
+                Notification = new NotificationModel
+                {
+                    Title = notification.Text,
+                    Text = notification.Text,
+                    Icon = !string.IsNullOrEmpty(notification.Image) ? notification.Image : "https://www.nextlevelfootballacademy.co.uk/wp-content/uploads/2019/06/logo.png"
+                }
             };
             var fcm = new FcmSender(settings, httpClient);
             FcmResponse result = await fcm.SendAsync(deviceToken, googleNotification);

@@ -25,6 +25,10 @@ namespace NextLevelTrainingApi.ViewModels
         public string PaymentStatus { get; set; }
         public string TransactionID { get; set; }
         public DateTime CurrentTime { get; set; }
+        public DateTime BookingDate { get; set; }
+        public DateTime FromTime { get; set; }
+        public DateTime ToTime { get; set; }
+
         
         public string BookingStatus { get; set; }
         public DateTime? RescheduledDateTime { get; set; }

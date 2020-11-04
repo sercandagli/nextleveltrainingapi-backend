@@ -1,6 +1,7 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 using NextLevelTrainingApi.DAL.Interfaces;
 using NextLevelTrainingApi.Helper;
+using NextLevelTrainingApi.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public Booking()
         {
             this.Reviews = new List<Review>();
+            this.Sessions = new List<BookingTime>();
         }
         [BsonId]
         public Guid Id { get; set; }
@@ -24,6 +26,10 @@ namespace NextLevelTrainingApi.DAL.Entities
         public DateTime SentDate { get; set; }
         public Guid TrainingLocationID { get; set; }
         public decimal Amount { get; set; }
+        public DateTime FromTime { get; set; }
+        public DateTime ToTime { get; set; }
+        public DateTime BookingDate { get; set; }
+
         public string PaymentStatus { get; set; }
         public string TransactionID { get; set; }
         public string BookingStatus { get; set; }

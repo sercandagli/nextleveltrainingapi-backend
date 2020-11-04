@@ -74,12 +74,14 @@ namespace NextLevelTrainingApi
                 };
             });
 
+      
             services.AddHttpContextAccessor();
             services.AddSingleton<INextLevelDBSettings>(sp =>
                 sp.GetRequiredService<IOptions<NextLevelDBSettings>>().Value);
 
             services.AddSingleton<IUserContext, UserContext>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            //services.AddScoped<IPushNotification, PushNotification>();
 
             services.AddControllers().AddNewtonsoftJson(options => options.UseMemberCasing());;
         }

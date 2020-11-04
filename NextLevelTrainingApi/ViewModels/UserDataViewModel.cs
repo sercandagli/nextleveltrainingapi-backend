@@ -56,6 +56,7 @@ namespace NextLevelTrainingApi.ViewModels
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }
         public int Rate { get; set; }
+        public bool Featured { get; set; }
         public string AverageBookingRating { get; set; }
         public TravelMiles TravelMile { get; set; }
         public BankAccount BankAccount { get; set; }
