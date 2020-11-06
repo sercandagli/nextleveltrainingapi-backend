@@ -8,6 +8,6 @@ namespace NextLevelTrainingApi.ViewModels
     public class BookingStatusViewModel
     {
         public string Status { get; set; }
-        public DateTime? Date { get; set; }
+        public string Date { get; set; }
     }
 }

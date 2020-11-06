@@ -55,10 +55,10 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpGet]
         [Route("GetUser")]
-        public ActionResult<UserDataViewModel> GetUser()
+        public  ActionResult<UserDataViewModel> GetUser()
         {
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
-
+           
             if (user == null)
             {
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
@@ -2297,48 +2297,47 @@ namespace NextLevelTrainingApi.Controllers
 
                 foreach (var book in bookings)
                 {
+                    book.Statuses = new List<BookingStatusViewModel>();
+                    var completedSessionCount = 0;
+                    var sessionStatuses = new List<BookingStatusViewModel>();
                     foreach (var session in book.Sessions)
                     {
-                        List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
-                        if (book.RescheduledDateTime != null)
+                        var sessionTime = session.FromTime.ToString("yyyy-MM-dd hh:mmtt") + "-" + session.ToTime.ToString("hh:mmtt");
+                        if (DateTime.Now >= session.FromTime && DateTime.Now <= session.ToTime)
                         {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                            sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = sessionTime });
                         }
-                        if (DateTime.Now.Date == session.BookingDate.Date)
+                        else if (DateTime.Now > session.ToTime)
                         {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = session.BookingDate });
+                            sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = sessionTime });
+                            completedSessionCount++;
                         }
-                        if (DateTime.Now.Date > session.BookingDate.Date)
+                        else
                         {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = session.BookingDate });
-                        }
-                        if (book.CancelledDateTime != null)
-                        {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
-                        }
-                        session.Statuses = statuses;
-                    }
-                    List<BookingStatusViewModel> rootStatutes = new List<BookingStatusViewModel>();
+                            sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session Scheduled", Date = sessionTime });
 
-                    rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
+                        }
+
+                    }
                     if (book.RescheduledDateTime != null)
                     {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+
+                        book.Statuses.AddRange(sessionStatuses);
                     }
-                    if (DateTime.Now.Date == book.BookingDate.Date)
+                    else if (book.CancelledDateTime != null)
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                    else if (completedSessionCount == book.Sessions.Count)
                     {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                        book.Statuses.AddRange(sessionStatuses);
+
                     }
-                    if (DateTime.Now.Date > book.BookingDate.Date)
+                    else
                     {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Scheduled", Date = book.SentDate.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                        book.Statuses.AddRange(sessionStatuses);
                     }
-                    if (book.CancelledDateTime != null)
-                    {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
-                    }
-                    book.Statuses = rootStatutes;
                 }
             }
             else
@@ -2415,49 +2414,48 @@ namespace NextLevelTrainingApi.Controllers
                 
                 foreach (var book in bookings)
                 {
-                    foreach(var session in book.Sessions)
+                    book.Statuses = new List<BookingStatusViewModel>();
+                    var completedSessionCount = 0;
+                    var sessionStatuses = new List<BookingStatusViewModel>();
+                    foreach (var session in book.Sessions)
                     {
-                        List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
-                        if (book.RescheduledDateTime != null)
+                        var sessionTime = session.FromTime.ToString("yyyy-MM-dd hh:mmtt") + "-" + session.ToTime.ToString("hh:mmtt");
+                        if (DateTime.Now >= session.FromTime && DateTime.Now <= session.ToTime)
                         {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                            sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = sessionTime });
                         }
-                        if (DateTime.Now.Date == session.BookingDate.Date)
+                        else if (DateTime.Now > session.ToTime)
                         {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = session.BookingDate });
+                            sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = sessionTime });
+                            completedSessionCount++;
                         }
-                        if (DateTime.Now.Date > session.BookingDate.Date)
+                        else
                         {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = session.BookingDate });
+                            sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session Scheduled", Date = sessionTime });
+
                         }
-                        if (book.CancelledDateTime != null)
-                        {
-                            statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
-                        }
-                        session.Statuses = statuses;
+
                     }
-
-                    List<BookingStatusViewModel> rootStatutes = new List<BookingStatusViewModel>();
-
-                    rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate });
                     if (book.RescheduledDateTime != null)
                     {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value });
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = book.RescheduledDateTime.Value.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+
+                        book.Statuses.AddRange(sessionStatuses);
                     }
-                    if (DateTime.Now.Date == book.BookingDate.Date)
+                    else if (book.CancelledDateTime != null)
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                    else if (completedSessionCount == book.Sessions.Count)
                     {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = book.BookingDate });
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = book.SentDate.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                        book.Statuses.AddRange(sessionStatuses);
+
                     }
-                    if (DateTime.Now.Date > book.BookingDate.Date)
+                    else
                     {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = book.BookingDate });
+                        book.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Scheduled", Date = book.SentDate.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                        book.Statuses.AddRange(sessionStatuses);
                     }
-                    if (book.CancelledDateTime != null)
-                    {
-                        rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = book.CancelledDateTime.Value });
-                    }
-                    book.Statuses = rootStatutes;
+
                 }
             }
             return bookings;
@@ -2468,7 +2466,9 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetBookingById/{bookingId}")]
         public ActionResult<BookingViewModel> GetBookingById(Guid bookingId)
         {
-            var booking = _unitOfWork.BookingRepository.FilterBy(x => x.Id == bookingId).Select(x => new
+            var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.Id == bookingId).ToList();
+
+            var booking = bookings.Select(x => new
                 BookingViewModel()
             {
                 Amount = x.Amount,
@@ -2522,52 +2522,47 @@ namespace NextLevelTrainingApi.Controllers
 
             booking.ProfileImage = string.IsNullOrEmpty(booking.ProfileImage) ? "" : ((booking.ProfileImage.Contains("http://") || booking.ProfileImage.Contains("https://")) ? booking.ProfileImage : _jwtAppSettings.AppBaseURL + booking.ProfileImage);
             booking.Player.ProfileImage = string.IsNullOrEmpty(booking.Player.ProfileImage) ? "" : ((booking.Player.ProfileImage.Contains("http://") || booking.Player.ProfileImage.Contains("https://")) ? booking.Player.ProfileImage : _jwtAppSettings.AppBaseURL + booking.Player.ProfileImage);
+            booking.Statuses = new List<BookingStatusViewModel>();
+            var completedSessionCount = 0;
+            var sessionStatuses = new List<BookingStatusViewModel>();
+            foreach (var session in booking.Sessions)
+            {
+                var sessionTime = session.FromTime.ToString("yyyy-MM-dd hh:mmtt") + "-" + session.ToTime.ToString("hh:mmtt");
+                if (DateTime.Now >= session.FromTime && DateTime.Now <= session.ToTime)
+                {
+                    sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = sessionTime });
+                }
+                else if (DateTime.Now > session.ToTime)
+                {
+                    sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = sessionTime });
+                    completedSessionCount++;
+                }
+                else
+                {
+                    sessionStatuses.Add(new BookingStatusViewModel() { Status = "Session Scheduled", Date = sessionTime });
 
-            List<BookingStatusViewModel> rootStatutes = new List<BookingStatusViewModel>();
+                }
 
-            rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate });
+            }
             if (booking.RescheduledDateTime != null)
             {
-                rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = booking.RescheduledDateTime.Value });
-            }
-            if (DateTime.Now.Date == booking.BookingDate.Date)
-            {
-                rootStatutes.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = booking.BookingDate });
-            }
-            if (DateTime.Now.Date > booking.BookingDate.Date)
-            {
-                rootStatutes.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = booking.BookingDate });
-            }
-            if (booking.CancelledDateTime != null)
-            {
-                rootStatutes.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = booking.CancelledDateTime.Value });
-            }
-            booking.Statuses = rootStatutes;
+                booking.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = booking.RescheduledDateTime.Value.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
 
+                booking.Statuses.AddRange(sessionStatuses);
+            }
+            else if (booking.CancelledDateTime != null)
+                booking.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = booking.CancelledDateTime.Value.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+            else if (completedSessionCount == booking.Sessions.Count)
+            {
+                booking.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                booking.Statuses.AddRange(sessionStatuses);
 
-            foreach (var session in booking.Sessions)
-                {
-                    List<BookingStatusViewModel> statuses = new List<BookingStatusViewModel>();
-                    statuses.Add(new BookingStatusViewModel() { Status = "Booking Completed", Date = booking.SentDate });
-                    if (booking.RescheduledDateTime != null)
-                    {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Rescheduled", Date = booking.RescheduledDateTime.Value });
-                    }
-                    if (DateTime.Now.Date == session.BookingDate.Date)
-                    {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Session In Progress", Date = session.BookingDate });
-                    }
-                    if (DateTime.Now.Date > session.BookingDate.Date)
-                    {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Session Completed", Date = session.BookingDate });
-                    }
-                    if (booking.CancelledDateTime != null)
-                    {
-                        statuses.Add(new BookingStatusViewModel() { Status = "Booking Cancelled", Date = booking.CancelledDateTime.Value });
-                    }
-                    session.Statuses = statuses;
-                }
-            
+            }
+            else
+            {
+                booking.Statuses.Add(new BookingStatusViewModel() { Status = "Booking Scheduled", Date = booking.SentDate.ToString("yyyy-MM-ddThh:mm:ss.sssZ") });
+                booking.Statuses.AddRange(sessionStatuses);
+            }
 
             return booking;
         }
@@ -3644,14 +3639,15 @@ namespace NextLevelTrainingApi.Controllers
 
         private async Task AndriodPushNotification(string deviceToken, Notification notification)
         {
-            HttpClient httpClient = new HttpClient();
-            FcmSettings settings = new FcmSettings() { SenderId = _fcmSettings.SenderId, ServerKey = _fcmSettings.ServerKey };
-            GoogleNotification googleNotification = new GoogleNotification();
-            googleNotification.Data = new AndroidPushNotificationsModel {
-                Image = notification.Image,
-                Title = notification.Text,
-                Message = notification.Text,
+                  
+            GoogleNotification googleNotification = new GoogleNotification
+            {
+                To = deviceToken,
                 Collapse_Key = "type_a",
+                Data = new DataNotification
+                {
+                    Notification = notification
+                },
                 Notification = new NotificationModel
                 {
                     Title = notification.Text,
@@ -3659,17 +3655,18 @@ namespace NextLevelTrainingApi.Controllers
                     Icon = !string.IsNullOrEmpty(notification.Image) ? notification.Image : "https://www.nextlevelfootballacademy.co.uk/wp-content/uploads/2019/06/logo.png"
                 }
             };
-            var fcm = new FcmSender(settings, httpClient);
-            FcmResponse result = await fcm.SendAsync(deviceToken, googleNotification);
-            if (!result.IsSuccess())
+            using(var httpClient = new HttpClient())
             {
-                ErrorLog error = new ErrorLog();
-                error.Id = Guid.NewGuid();
-                error.Exception = JsonConvert.SerializeObject(result);
-                error.StackTrace = "Andriod Push Notification: " + notification;
-                error.CreatedDate = DateTime.Now;
-                _unitOfWork.ErrorLogRepository.InsertOne(error);
-            }
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://fcm.googleapis.com/fcm/send");
+                httpRequest.Headers.Add("Authorization", $"key = {_fcmSettings.ServerKey}");
+                httpRequest.Headers.Add("Sender", $"id = {_fcmSettings.SenderId}");
+                var http = new HttpClient();
+                var json = JsonConvert.SerializeObject(googleNotification);
+                httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var response = await httpClient.SendAsync(httpRequest);
+                //response.EnsureSuccessStatusCode();
+                var responseString = await response.Content.ReadAsStringAsync();
+            }            
         }
 
         //[HttpGet]
@@ -3680,6 +3677,7 @@ namespace NextLevelTrainingApi.Controllers
             ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
             AppleNotification appleNotification = new AppleNotification();
             appleNotification.Aps.AlertBody = notification.Text;
+            appleNotification.Notification = JsonConvert.SerializeObject(notification);
             var apn = new ApnSender(apnSettings, httpClient);
             var result = await apn.SendAsync(appleNotification, deviceToken);
             if (!result.IsSuccess)

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using NextLevelTrainingApi.DAL.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,11 +17,16 @@ namespace NextLevelTrainingApi.ViewModels
         {
             [JsonProperty("alert")]
             public string AlertBody { get; set; }
+
+           
         }
 
         // Your custom properties as needed
 
         [JsonProperty("aps")]
         public ApsPayload Aps { get; set; }
+
+        [JsonProperty("notification")]
+        public string Notification { get; set; }
     }
 }

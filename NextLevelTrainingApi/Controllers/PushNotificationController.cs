@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using CorePush.Apple;
 using CorePush.Google;
@@ -21,16 +22,53 @@ namespace NextLevelTrainingApi.Controllers
     public class PushNotificationController : ControllerBase
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IOptions<FCMSettings> _fcmSettings;
+        private readonly FCMSettings _fcmSettings;
         public PushNotificationController(IUnitOfWork unitOfWork,
             IOptions<FCMSettings> fcmSettings)
         {
             _unitOfWork = unitOfWork;
-            _fcmSettings = fcmSettings;
+            _fcmSettings = fcmSettings.Value;
         }
 
 
-        [HttpPost]
+        [HttpPost("daily")]
+        public async Task<IActionResult> Daily([FromBody] SchedulePushNotificationViewModel vm)
+        {
+          
+            if (vm.Name != "DailyScheduledJob")
+                return NotFound();
+
+            var allUsers = _unitOfWork.UserRepository.AsQueryable().ToList();
+            foreach (var user in allUsers.Where(x => x.Role.ToLower() == Constants.PLAYER))
+            {
+
+                //training today?
+                Notification notification = new Notification();
+                notification.Id = Guid.NewGuid();
+                notification.Text = "Training Today?";
+                notification.CreatedDate = DateTime.Now;
+                notification.UserId = user.Id;
+                _unitOfWork.NotificationRepository.InsertOne(notification);
+                if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+                {
+                    await AndriodPushNotification(user.DeviceToken, notification);
+                }
+                else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+                {
+                    await ApplePushNotification(user.DeviceToken, notification);
+                }
+
+            }
+
+            return Ok();
+
+        }
+
+
+
+
+
+            [HttpPost]
         public async Task<IActionResult> Post([FromBody]SchedulePushNotificationViewModel vm)
         {
             if (vm.Name != Constants.ScheduledPushNotification)
@@ -366,25 +404,32 @@ namespace NextLevelTrainingApi.Controllers
 
         private async Task AndriodPushNotification(string deviceToken, Notification notification)
         {
-            HttpClient httpClient = new HttpClient();
-            FcmSettings settings = new FcmSettings() { SenderId = _fcmSettings.Value.SenderId, ServerKey = _fcmSettings.Value.ServerKey };
-            GoogleNotification googleNotification = new GoogleNotification();
-            googleNotification.Data = new AndroidPushNotificationsModel
+            GoogleNotification googleNotification = new GoogleNotification
             {
-                Image = notification.Image,
-                Title = notification.Text,
-                Message = notification.Text
+                To = deviceToken,
+                Collapse_Key = "type_a",
+                Data = new DataNotification
+                {
+                    Notification = notification
+                },
+                Notification = new NotificationModel
+                {
+                    Title = notification.Text,
+                    Text = notification.Text,
+                    Icon = !string.IsNullOrEmpty(notification.Image) ? notification.Image : "https://www.nextlevelfootballacademy.co.uk/wp-content/uploads/2019/06/logo.png"
+                }
             };
-            var fcm = new FcmSender(settings, httpClient);
-            FcmResponse result = await fcm.SendAsync(deviceToken, googleNotification);
-            if (!result.IsSuccess())
+            using (var httpClient = new HttpClient())
             {
-                ErrorLog error = new ErrorLog();
-                error.Id = Guid.NewGuid();
-                error.Exception = JsonConvert.SerializeObject(result);
-                error.StackTrace = "Andriod Push Notification: " + notification;
-                error.CreatedDate = DateTime.Now;
-                _unitOfWork.ErrorLogRepository.InsertOne(error);
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://fcm.googleapis.com/fcm/send");
+                httpRequest.Headers.Add("Authorization", $"key = {_fcmSettings.ServerKey}");
+                httpRequest.Headers.Add("Sender", $"id = {_fcmSettings.SenderId}");
+                var http = new HttpClient();
+                var json = JsonConvert.SerializeObject(googleNotification);
+                httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var response = await httpClient.SendAsync(httpRequest);
+                //response.EnsureSuccessStatusCode();
+                var responseString = await response.Content.ReadAsStringAsync();
             }
         }
 
@@ -396,6 +441,7 @@ namespace NextLevelTrainingApi.Controllers
             ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
             AppleNotification appleNotification = new AppleNotification();
             appleNotification.Aps.AlertBody = notification.Text;
+            appleNotification.Notification = JsonConvert.SerializeObject(notification);
             var apn = new ApnSender(apnSettings, httpClient);
             var result = await apn.SendAsync(appleNotification, deviceToken);
             if (!result.IsSuccess)
