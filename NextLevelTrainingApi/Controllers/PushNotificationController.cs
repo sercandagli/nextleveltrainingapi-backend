@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,7 +36,7 @@ namespace NextLevelTrainingApi.Controllers
         [HttpPost("daily")]
         public async Task<IActionResult> Daily([FromBody] SchedulePushNotificationViewModel vm)
         {
-          
+
             if (vm.Name != "DailyScheduledJob")
                 return NotFound();
 
@@ -68,7 +70,7 @@ namespace NextLevelTrainingApi.Controllers
 
 
 
-            [HttpPost]
+        [HttpPost]
         public async Task<IActionResult> Post([FromBody]SchedulePushNotificationViewModel vm)
         {
             if (vm.Name != Constants.ScheduledPushNotification)
@@ -114,10 +116,10 @@ namespace NextLevelTrainingApi.Controllers
             dayBefore = now.AddDays(-3);
 
             playersWithAfterRegister = players.Where(x => x.RegisterDate.Date == dayBefore.Date).ToList();
-             playersWithAfterRegisterIds = playersWithAfterRegister.Select(x => x.Id).ToList();
+            playersWithAfterRegisterIds = playersWithAfterRegister.Select(x => x.Id).ToList();
 
-             playersWithBooking = _unitOfWork.BookingRepository.FilterBy(x => playersWithAfterRegisterIds.Contains(x.PlayerID)).Select(x => x.PlayerID).ToList();
-             playersWithoutBooking = playersWithAfterRegister.Where(x => !playersWithBooking.Contains(x.Id)).ToList();
+            playersWithBooking = _unitOfWork.BookingRepository.FilterBy(x => playersWithAfterRegisterIds.Contains(x.PlayerID)).Select(x => x.PlayerID).ToList();
+            playersWithoutBooking = playersWithAfterRegister.Where(x => !playersWithBooking.Contains(x.Id)).ToList();
 
 
             foreach (var id in playersWithBooking)
@@ -289,7 +291,7 @@ namespace NextLevelTrainingApi.Controllers
             }
 
 
-         
+
             //first bookings for coaches
             foreach(var coach in coaches)
             {
@@ -309,7 +311,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 if (hasEndedTraining)
                 {
-  
+
                     Notification notification = new Notification();
                     notification.Id = Guid.NewGuid();
                     notification.Text = "How was your first session? Leave us a review on the app store ⭐";
@@ -396,7 +398,7 @@ namespace NextLevelTrainingApi.Controllers
                     }
                 }
             }
-            
+
 
 
             return Ok();
@@ -406,7 +408,7 @@ namespace NextLevelTrainingApi.Controllers
         {
             GoogleNotification googleNotification = new GoogleNotification
             {
-                To = deviceToken,
+                To = deviceToken.Trim(),
                 Collapse_Key = "type_a",
                 Data = new DataNotification
                 {
@@ -427,9 +429,45 @@ namespace NextLevelTrainingApi.Controllers
                 var http = new HttpClient();
                 var json = JsonConvert.SerializeObject(googleNotification);
                 httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
-                using var response = await httpClient.SendAsync(httpRequest);
-                //response.EnsureSuccessStatusCode();
-                var responseString = await response.Content.ReadAsStringAsync();
+                var response = await httpClient.SendAsync(httpRequest);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var notificationError = response.Content.ReadAsStringAsync().Result;
+                    var device_Token = deviceToken;
+                    var user = _unitOfWork.UserRepository.FindOne(x => x.DeviceToken.ToLower() == device_Token.ToLower());
+                    string path = Directory.GetCurrentDirectory();
+                    var num = string.IsNullOrEmpty(user.MobileNo) ? "" : user.MobileNo.ToString();
+                    var email = string.IsNullOrEmpty(user.EmailID) ? "" : user.EmailID.ToString();
+                    string newPath = path + "\\wwwroot\\ErrorLogFile\\AndroidErrorDevices.txt";
+                    using (StreamWriter writer = new StreamWriter(newPath, true))
+                    {
+                        writer.WriteLine("-----------------------------------------------------------------------------");
+                        writer.WriteLine("Email : " + email.ToString());
+                        writer.WriteLine("Mobile_No : " + num);
+                        writer.WriteLine("Device_Token : " + device_Token.ToString());
+                        writer.WriteLine("Error : " + notificationError.ToString());
+                        writer.WriteLine("-----------------------------------------------------------------------------");
+                        writer.WriteLine();
+                    }
+                }
+                else
+                {
+                    var device_Token = deviceToken;
+                    var user = _unitOfWork.UserRepository.FindOne(x => x.DeviceToken.ToLower() == device_Token.ToLower());
+                    string path = Directory.GetCurrentDirectory();
+                    var num = string.IsNullOrEmpty(user.MobileNo) ? "" : user.MobileNo.ToString();
+                    var email = string.IsNullOrEmpty(user.EmailID) ? "" : user.EmailID.ToString();
+                    string newPath = path + "\\wwwroot\\ErrorLogFile\\AndroidWorkingDevices.txt";
+                    using (StreamWriter writer = new StreamWriter(newPath, true))
+                    {
+                        writer.WriteLine("-----------------------------------------------------------------------------");
+                        writer.WriteLine("Email : " + email);
+                        writer.WriteLine("Mobile_No : " + num);
+                        writer.WriteLine("Device_Token : " + device_Token.ToString());
+                        writer.WriteLine("-----------------------------------------------------------------------------");
+                        writer.WriteLine();
+                    }
+                }
             }
         }
 
@@ -437,21 +475,102 @@ namespace NextLevelTrainingApi.Controllers
         //[Route("AppleNotificaion")]
         private async Task ApplePushNotification(string deviceToken, Notification notification)
         {
-            HttpClient httpClient = new HttpClient();
-            ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
-            AppleNotification appleNotification = new AppleNotification();
-            appleNotification.Aps.AlertBody = notification.Text;
-            appleNotification.Notification = JsonConvert.SerializeObject(notification);
-            var apn = new ApnSender(apnSettings, httpClient);
-            var result = await apn.SendAsync(appleNotification, deviceToken);
-            if (!result.IsSuccess)
+            try
             {
-                ErrorLog error = new ErrorLog();
-                error.Id = Guid.NewGuid();
-                error.Exception = JsonConvert.SerializeObject(result);
-                error.StackTrace = "Apple Push Notification: " + notification.Text + " DeviceToken:" + deviceToken;
-                error.CreatedDate = DateTime.Now;
-                _unitOfWork.ErrorLogRepository.InsertOne(error);
+
+                HttpClient httpClient = new HttpClient();
+                ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Production, TeamId = "Y77A2C426U" };
+                AppleNotification appleNotification = new AppleNotification();
+                appleNotification.Aps.AlertBody = notification.Text;
+                appleNotification.Notification = JsonConvert.SerializeObject(notification);
+                var apn = new ApnSender(apnSettings, httpClient);
+                var result = await apn.SendAsync(appleNotification, deviceToken.Trim());
+                if (!result.IsSuccess)
+                {
+                    ApnSettings devApnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
+                    AppleNotification appleNotificationDev = new AppleNotification();
+                    appleNotificationDev.Aps.AlertBody = notification.Text;
+                    appleNotificationDev.Notification = JsonConvert.SerializeObject(notification);
+                    var apnDev = new ApnSender(devApnSettings, httpClient);
+                    var resultDev = await apnDev.SendAsync(appleNotificationDev, deviceToken.Trim());
+                    if (!resultDev.IsSuccess)
+                    {
+                        var notificationError = result.Error.Reason;
+                        var device_Token = deviceToken;
+                        var user = _unitOfWork.UserRepository.FindOne(x => x.DeviceToken.ToLower() == device_Token.ToLower());
+                        string path = Directory.GetCurrentDirectory();
+                        var num = string.IsNullOrEmpty(user.MobileNo) ? "" : user.MobileNo.ToString();
+                        var email = string.IsNullOrEmpty(user.EmailID) ? "" : user.EmailID.ToString();
+                        string newPath = path + "\\wwwroot\\ErrorLogFile\\AppleErrorDevices.txt";
+                        using (StreamWriter writer = new StreamWriter(newPath, true))
+                        {
+                            writer.WriteLine("-----------------------------------------------------------------------------");
+                            writer.WriteLine("Email : " + email.ToString());
+                            writer.WriteLine("Mobile_No : " + num);
+                            writer.WriteLine("Device_Token : " + device_Token.ToString());
+                            writer.WriteLine("Error : " + notificationError.ToString());
+                            writer.WriteLine("Mode : Development");
+                            writer.WriteLine("-----------------------------------------------------------------------------");
+                            writer.WriteLine();
+                        }
+                    }
+                    else
+                    {
+                        var notificationError = result.Error.Reason;
+                        var device_Token = deviceToken;
+                        var user = _unitOfWork.UserRepository.FindOne(x => x.DeviceToken.ToLower() == device_Token.ToLower());
+                        string path = Directory.GetCurrentDirectory();
+                        var num = string.IsNullOrEmpty(user.MobileNo) ? "" : user.MobileNo.ToString();
+                        var email = string.IsNullOrEmpty(user.EmailID) ? "" : user.EmailID.ToString();
+                        string newPath = path + "\\wwwroot\\ErrorLogFile\\AppleWorkingDevices.txt";
+                        using (StreamWriter writer = new StreamWriter(newPath, true))
+                        {
+                            writer.WriteLine("-----------------------------------------------------------------------------");
+                            writer.WriteLine("Email : " + email.ToString());
+                            writer.WriteLine("Mobile_No : " + num);
+                            writer.WriteLine("Device_Token : " + device_Token.ToString());
+                            writer.WriteLine("Mode : Development");
+                            writer.WriteLine("-----------------------------------------------------------------------------");
+                            writer.WriteLine();
+                        }
+                    }
+                    
+                    
+                }
+                else
+                {
+                    var device_Token = deviceToken;
+                    var user = _unitOfWork.UserRepository.FindOne(x => x.DeviceToken.ToLower() == device_Token.ToLower());
+                    string path = Directory.GetCurrentDirectory();
+                    var num = string.IsNullOrEmpty(user.MobileNo) ? "" : user.MobileNo.ToString();
+                    var email = string.IsNullOrEmpty(user.EmailID) ? "" : user.EmailID.ToString();
+                    string newPath = path + "\\wwwroot\\ErrorLogFile\\AppleWorkingDevices.txt";
+                    using (StreamWriter writer = new StreamWriter(newPath, true))
+                    {
+                        writer.WriteLine("-----------------------------------------------------------------------------");
+                        writer.WriteLine("Email : " + email);
+                        writer.WriteLine("Mobile_No : " + num);
+                        writer.WriteLine("Device_Token : " + device_Token.ToString());
+                        writer.WriteLine("Mode : Production");
+                        writer.WriteLine("-----------------------------------------------------------------------------");
+                        writer.WriteLine();
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                string path = Directory.GetCurrentDirectory();
+                string newPath = path + "\\wwwroot\\ErrorLogFile\\ErrorLogs.txt";
+                using (StreamWriter writer = new StreamWriter(newPath, true))
+                {
+                    writer.WriteLine("-----------------------------------------------------------------------------");
+                    writer.WriteLine("Message : " + ex.Message.ToString());
+                    writer.WriteLine("Eception : " + ex.ToString());
+                    writer.WriteLine("-----------------------------------------------------------------------------");
+                    writer.WriteLine();
+                }
+
             }
         }
     }

@@ -96,7 +96,10 @@ namespace NextLevelTrainingApi.Controllers
             }
             if (!string.IsNullOrEmpty(userVM.DeviceToken) && !string.IsNullOrEmpty(userVM.DeviceType))
             {
-                //user.DeviceToken = userVM.DeviceToken;
+                if (!string.IsNullOrEmpty(userVM.DeviceToken))
+                {
+                    user.DeviceToken = userVM.DeviceToken;
+                }
                 user.DeviceType = userVM.DeviceType;
             }
             _unitOfWork.UserRepository.ReplaceOne(user);
@@ -156,7 +159,10 @@ namespace NextLevelTrainingApi.Controllers
                 user.SocialLoginType = Constants.FACEBOOK_LOGIN;
                 user.DeviceID = loginModel.DeviceID;
                 user.DeviceType = loginModel.DeviceType;
-                user.DeviceToken = loginModel.DeviceToken;
+                if (!string.IsNullOrEmpty(loginModel.DeviceToken))
+                {
+                    user.DeviceToken = loginModel.DeviceToken;
+                }
                 user.Featured = false;
                 user.PaypalPaymentId = "";
                 if (loginModel.Lat != null)
@@ -187,7 +193,10 @@ namespace NextLevelTrainingApi.Controllers
                 user.AccessToken = loginModel.AuthenticationToken;
                 user.DeviceID = loginModel.DeviceID;
                 user.DeviceType = loginModel.DeviceType;
-                //user.DeviceToken = loginModel.DeviceToken;
+                if (!string.IsNullOrEmpty(loginModel.DeviceToken))
+                {
+                    user.DeviceToken = loginModel.DeviceToken;
+                }
                 if (loginModel.Lat != null)
                 {
                     user.Lat = loginModel.Lat;
@@ -246,7 +255,10 @@ namespace NextLevelTrainingApi.Controllers
                 user.SocialLoginType = Constants.GOOGLE_LOGIN;
                 user.AccessToken = loginModel.AuthenticationToken;
                 user.DeviceID = loginModel.DeviceID;
-                //user.DeviceToken = loginModel.DeviceToken;
+                if (!string.IsNullOrEmpty(loginModel.DeviceToken))
+                {
+                    user.DeviceToken = loginModel.DeviceToken;
+                }
                 user.DeviceType = loginModel.DeviceType;
                 user.Featured = loginModel.Featured;
                 if (loginModel.Lat != null)
@@ -270,7 +282,10 @@ namespace NextLevelTrainingApi.Controllers
                 user.FullName = loginModel.Name;
                 user.AccessToken = loginModel.AuthenticationToken;
                 user.DeviceID = loginModel.DeviceID;
-                //user.DeviceToken = loginModel.DeviceToken;
+                if (!string.IsNullOrEmpty(loginModel.DeviceToken))
+                {
+                    user.DeviceToken = loginModel.DeviceToken;
+                }
                 user.DeviceType = loginModel.DeviceType;
                 if (loginModel.Lat != null)
                 {
@@ -327,7 +342,10 @@ namespace NextLevelTrainingApi.Controllers
                 user.Role = loginModel.Role;
                 user.SocialLoginType = Constants.APPLE_LOGIN;
                 user.DeviceID = loginModel.DeviceID;
-                //user.DeviceToken = loginModel.DeviceToken;
+                if (!string.IsNullOrEmpty(loginModel.DeviceToken))
+                {
+                    user.DeviceToken = loginModel.DeviceToken;
+                }
                 user.DeviceType = loginModel.DeviceType;
                 user.Featured = loginModel.Featured;
                 if (loginModel.Lat != null)
@@ -349,7 +367,10 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 user.FullName = loginModel.Name;
                 user.DeviceID = loginModel.DeviceID;
-                user.DeviceToken = loginModel.DeviceToken;
+                if (!string.IsNullOrEmpty(loginModel.DeviceToken))
+                {
+                    user.DeviceToken = loginModel.DeviceToken;
+                }
                 user.DeviceType = loginModel.DeviceType;
                 if (loginModel.Lat != null)
                 {
