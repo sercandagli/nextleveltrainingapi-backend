@@ -50,7 +50,7 @@ namespace NextLevelTrainingApi.Controllers
                 notification.Text = "Training Today?";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
+                //_unitOfWork.NotificationRepository.InsertOne(notification);
                 if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                 {
                     await AndriodPushNotification(user.DeviceToken, notification);
@@ -100,7 +100,7 @@ namespace NextLevelTrainingApi.Controllers
                 notification.Text = "Time to train ⚽ Book your first 1 on 1 session today 🏆";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
+                //_unitOfWork.NotificationRepository.InsertOne(notification);
                 if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                 {
                     await AndriodPushNotification(user.DeviceToken, notification);
@@ -130,7 +130,7 @@ namespace NextLevelTrainingApi.Controllers
                 notification.Text = "Good players practise until they get it right. Great players practise until they never get it wrong  💪";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
+                //_unitOfWork.NotificationRepository.InsertOne(notification);
                 if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                 {
                     await AndriodPushNotification(user.DeviceToken, notification);
@@ -160,7 +160,7 @@ namespace NextLevelTrainingApi.Controllers
                 notification.Text = "Good players practise until they get it right. Great players practise until they never get it wrong  💪";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
+                //_unitOfWork.NotificationRepository.InsertOne(notification);
                 if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                 {
                     await AndriodPushNotification(user.DeviceToken, notification);
@@ -181,7 +181,7 @@ namespace NextLevelTrainingApi.Controllers
                 notification.Text = "To improve you must train as much as possible. Book a training session today!";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
+                //_unitOfWork.NotificationRepository.InsertOne(notification);
                 if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                 {
                     await AndriodPushNotification(user.DeviceToken, notification);
@@ -202,7 +202,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "New month, new goals - Time to smash it 💪";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
+                    //_unitOfWork.NotificationRepository.InsertOne(notification);
                     if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                     {
                         await AndriodPushNotification(user.DeviceToken, notification);
@@ -240,7 +240,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "How was your Training? Leave your coach a review ⭐";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
+                    //_unitOfWork.NotificationRepository.InsertOne(notification);
                     if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                     {
                         await AndriodPushNotification(user.DeviceToken, notification);
@@ -278,7 +278,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "Ready for your next training session? ⚽";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
+                    //_unitOfWork.NotificationRepository.InsertOne(notification);
                     if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                     {
                         await AndriodPushNotification(user.DeviceToken, notification);
@@ -317,7 +317,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "How was your first session? Leave us a review on the app store ⭐";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = coach.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
+                    //_unitOfWork.NotificationRepository.InsertOne(notification);
                     if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                     {
                         await AndriodPushNotification(coach.DeviceToken, notification);
@@ -341,7 +341,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "Set your availability and training locations for the week.Improve your profile";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = coach.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
+                    //_unitOfWork.NotificationRepository.InsertOne(notification);
                     if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                     {
                         await AndriodPushNotification(coach.DeviceToken, notification);
@@ -363,7 +363,7 @@ namespace NextLevelTrainingApi.Controllers
                 notification.Text = "Set your availability and training locations for the week.Improve your profile";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = coach.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
+                //_unitOfWork.NotificationRepository.InsertOne(notification);
                 if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                 {
                     await AndriodPushNotification(coach.DeviceToken, notification);
@@ -386,7 +386,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "Post about training";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
+                    //_unitOfWork.NotificationRepository.InsertOne(notification);
                     if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                     {
                         await AndriodPushNotification(user.DeviceToken, notification);
