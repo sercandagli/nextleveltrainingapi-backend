@@ -234,7 +234,7 @@ namespace NextLevelTrainingApi.Controllers
             notification.Text = "Profile updated successfully.";
             notification.CreatedDate = DateTime.Now;
             notification.UserId = _userContext.UserID;
-            //_unitOfWork.NotificationRepository.InsertOne(notification);
+            _unitOfWork.NotificationRepository.InsertOne(notification);
             if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
             {
                 await AndriodPushNotification(user.DeviceToken, notification);
@@ -317,7 +317,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = user.FullName + " tagged you in a post.";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = user.Id;
-                    //_unitOfWork.NotificationRepository.InsertOne(notification);
+                    _unitOfWork.NotificationRepository.InsertOne(notification);
 
                     if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                     {
@@ -383,7 +383,7 @@ namespace NextLevelTrainingApi.Controllers
             notification.CreatedDate = DateTime.Now;
             notification.UserId = postOwner.Id;
             notification.Image = user.ProfileImage;
-            //_unitOfWork.NotificationRepository.InsertOne(notification);
+            _unitOfWork.NotificationRepository.InsertOne(notification);
             if (postOwner.DeviceType != null && Convert.ToString(postOwner.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
             {
                 await AndriodPushNotification(postOwner.DeviceToken, notification);
@@ -1885,7 +1885,7 @@ namespace NextLevelTrainingApi.Controllers
             notification.Text = "You have a message";
             notification.CreatedDate = DateTime.Now;
             notification.UserId = messageVM.ReceiverId;
-            //_unitOfWork.NotificationRepository.InsertOne(notification);
+            _unitOfWork.NotificationRepository.InsertOne(notification);
 
             var usr = _unitOfWork.UserRepository.FindById(messageVM.ReceiverId);
 
@@ -2142,7 +2142,7 @@ namespace NextLevelTrainingApi.Controllers
             notification.Text = "New booking received.";
             notification.CreatedDate = DateTime.Now;
             notification.UserId = booking.CoachID;
-            //_unitOfWork.NotificationRepository.InsertOne(notification);
+            _unitOfWork.NotificationRepository.InsertOne(notification);
 
             var usr = _unitOfWork.UserRepository.FindById(booking.PlayerID);
 
@@ -2183,7 +2183,7 @@ namespace NextLevelTrainingApi.Controllers
             notification.Text = "Booking cancelled successfully.";
             notification.CreatedDate = DateTime.Now;
             notification.UserId = _userContext.UserID;
-            //_unitOfWork.NotificationRepository.InsertOne(notification);
+            _unitOfWork.NotificationRepository.InsertOne(notification);
 
             var user = _unitOfWork.UserRepository.FindById(booking.PlayerID);
             EmailHelper.SendEmail(user.EmailID, _emailSettings, "cancelbooking");
@@ -2589,7 +2589,7 @@ namespace NextLevelTrainingApi.Controllers
             notification.Text = "Booking rescheduled successfully.";
             notification.CreatedDate = DateTime.Now;
             notification.UserId = _userContext.UserID;
-            //_unitOfWork.NotificationRepository.InsertOne(notification);
+            _unitOfWork.NotificationRepository.InsertOne(notification);
 
             var usr = _unitOfWork.UserRepository.FindById(b.PlayerID);
             //EmailHelper.SendEmail(usr.EmailID, _emailSettings, "reschedule", b.RescheduledDateTime.Value.ToString("dd MMM yyyy") + " " + booking.FromTime.ToString("hh:mm tt") + " - " + booking.ToTime.ToString("hh:mm tt"));
@@ -3303,7 +3303,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "Connected with " + user.FullName + " successfully.";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = connectedUser.UserId;
-                    //_unitOfWork.NotificationRepository.InsertOne(notification);
+                    _unitOfWork.NotificationRepository.InsertOne(notification);
 
                     var cUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
                     if (cUser.DeviceType != null && cUser.DeviceType.ToLower() == Constants.ANDRIOD_DEVICE)
@@ -3327,7 +3327,7 @@ namespace NextLevelTrainingApi.Controllers
                         notification.Text = "Connected with " + aUser.FullName + " successfully.";
                         notification.CreatedDate = DateTime.Now;
                         notification.UserId = user.Id;
-                        //_unitOfWork.NotificationRepository.InsertOne(notification);
+                        _unitOfWork.NotificationRepository.InsertOne(notification);
 
                         if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                         {
@@ -3355,7 +3355,7 @@ namespace NextLevelTrainingApi.Controllers
                     notification.Text = "Disconnected with " + user.FullName + " successfully.";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = connectedUser.UserId;
-                    //_unitOfWork.NotificationRepository.InsertOne(notification);
+                    _unitOfWork.NotificationRepository.InsertOne(notification);
 
                     var cUser = _unitOfWork.UserRepository.FindById(connectedUser.UserId);
                     if (cUser.DeviceType != null && Convert.ToString(cUser.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
@@ -3381,7 +3381,7 @@ namespace NextLevelTrainingApi.Controllers
                         notification.Text = "Disconnected with " + aUser.FullName + " successfully.";
                         notification.CreatedDate = DateTime.Now;
                         notification.UserId = user.Id;
-                        //_unitOfWork.NotificationRepository.InsertOne(notification);
+                        _unitOfWork.NotificationRepository.InsertOne(notification);
 
                         if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
                         {
