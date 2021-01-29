@@ -45,6 +45,7 @@ namespace NextLevelTrainingApi.Controllers
             {
                 Id = Guid.NewGuid(),
                 Address = userVM.Address,
+                State = userVM.State,
                 EmailID = userVM.EmailID,
                 FullName = userVM.FullName,
                 MobileNo = userVM.MobileNo,

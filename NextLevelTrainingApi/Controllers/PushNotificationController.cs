@@ -34,7 +34,7 @@ namespace NextLevelTrainingApi.Controllers
         [HttpPost("daily")]
         public async Task<IActionResult> Daily([FromBody] SchedulePushNotificationViewModel vm)
         {
-          
+
             if (vm.Name != "DailyScheduledJob")
                 return NotFound();
 
@@ -68,8 +68,8 @@ namespace NextLevelTrainingApi.Controllers
 
 
 
-            [HttpPost]
-        public async Task<IActionResult> Post([FromBody]SchedulePushNotificationViewModel vm)
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] SchedulePushNotificationViewModel vm)
         {
             if (vm.Name != Constants.ScheduledPushNotification)
                 return NotFound();
@@ -90,7 +90,7 @@ namespace NextLevelTrainingApi.Controllers
             var playersWithBooking = _unitOfWork.BookingRepository.FilterBy(x => playersWithAfterRegisterIds.Contains(x.PlayerID)).Select(x => x.PlayerID).ToList();
             var playersWithoutBooking = playersWithAfterRegister.Where(x => !playersWithBooking.Contains(x.Id)).ToList();
 
-            foreach(var id in playersWithBooking)
+            foreach (var id in playersWithBooking)
             {
                 var user = players.FirstOrDefault(x => x.Id == id);
                 Notification notification = new Notification();
@@ -114,10 +114,10 @@ namespace NextLevelTrainingApi.Controllers
             dayBefore = now.AddDays(-3);
 
             playersWithAfterRegister = players.Where(x => x.RegisterDate.Date == dayBefore.Date).ToList();
-             playersWithAfterRegisterIds = playersWithAfterRegister.Select(x => x.Id).ToList();
+            playersWithAfterRegisterIds = playersWithAfterRegister.Select(x => x.Id).ToList();
 
-             playersWithBooking = _unitOfWork.BookingRepository.FilterBy(x => playersWithAfterRegisterIds.Contains(x.PlayerID)).Select(x => x.PlayerID).ToList();
-             playersWithoutBooking = playersWithAfterRegister.Where(x => !playersWithBooking.Contains(x.Id)).ToList();
+            playersWithBooking = _unitOfWork.BookingRepository.FilterBy(x => playersWithAfterRegisterIds.Contains(x.PlayerID)).Select(x => x.PlayerID).ToList();
+            playersWithoutBooking = playersWithAfterRegister.Where(x => !playersWithBooking.Contains(x.Id)).ToList();
 
 
             foreach (var id in playersWithBooking)
@@ -155,7 +155,7 @@ namespace NextLevelTrainingApi.Controllers
                 var user = players.FirstOrDefault(x => x.Id == id);
                 Notification notification = new Notification();
                 notification.Id = Guid.NewGuid();
-                notification.Text = "Good players practise until they get it right. Great players practise until they never get it wrong  💪";
+                notification.Text = "New coaches are in your area ⚽ Let’s take it to the next level! Book a session today !";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = user.Id;
                 _unitOfWork.NotificationRepository.InsertOne(notification);
@@ -172,7 +172,7 @@ namespace NextLevelTrainingApi.Controllers
 
 
             //everyday notifications
-            foreach(var user in players)
+            foreach (var user in players)
             {
                 Notification notification = new Notification();
                 notification.Id = Guid.NewGuid();
@@ -191,7 +191,7 @@ namespace NextLevelTrainingApi.Controllers
             }
 
             //begining of the month
-            if(now.Day == 1)
+            if (now.Day == 1)
             {
                 foreach (var user in players)
                 {
@@ -218,12 +218,12 @@ namespace NextLevelTrainingApi.Controllers
 
             var lastBookings = _unitOfWork.BookingRepository.FilterBy(x => x.SentDate > dayBefore);
             dayBefore = DateTime.Now.AddDays(-1);
-            foreach(var booking in lastBookings)
+            foreach (var booking in lastBookings)
             {
                 var hasEndedSession = false;
-                foreach(var session in booking.Sessions)
+                foreach (var session in booking.Sessions)
                 {
-                    if(session.BookingDate < dayBefore)
+                    if (session.BookingDate < dayBefore)
                     {
                         hasEndedSession = true;
                         break;
@@ -289,18 +289,18 @@ namespace NextLevelTrainingApi.Controllers
             }
 
 
-         
+
             //first bookings for coaches
-            foreach(var coach in coaches)
+            foreach (var coach in coaches)
             {
                 var bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == coach.Id).ToList();
                 if (!bookings.Any() || bookings.Count > 1)
                     continue;
                 var hasEndedTraining = false;
 
-                foreach(var session in bookings.FirstOrDefault().Sessions)
+                foreach (var session in bookings.FirstOrDefault().Sessions)
                 {
-                    if(session.BookingDate < DateTime.Now)
+                    if (session.BookingDate < DateTime.Now)
                     {
                         hasEndedTraining = true;
                         break;
@@ -309,7 +309,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 if (hasEndedTraining)
                 {
-  
+
                     Notification notification = new Notification();
                     notification.Id = Guid.NewGuid();
                     notification.Text = "How was your first session? Leave us a review on the app store ⭐";
@@ -329,14 +329,14 @@ namespace NextLevelTrainingApi.Controllers
 
 
             //weekly coachs notifications
-            if(now.Day % 7 == 0)
+            if (now.Day % 7 == 0)
             {
-                foreach(var coach in coaches)
+                foreach (var coach in coaches)
                 {
 
                     Notification notification = new Notification();
                     notification.Id = Guid.NewGuid();
-                    notification.Text = "Set your availability and training locations for the week.Improve your profile";
+                    notification.Text = "Set your availability and training locations for the week. Improve your profile to receive more bookings";
                     notification.CreatedDate = DateTime.Now;
                     notification.UserId = coach.Id;
                     _unitOfWork.NotificationRepository.InsertOne(notification);
@@ -352,13 +352,13 @@ namespace NextLevelTrainingApi.Controllers
                 }
             }
 
-            var signUpLimit = now.AddDays(-7);
+            var signUpLimit = now.AddDays(-14);
             var weeklyCoaches = coaches.Where(x => x.RegisterDate.Date == signUpLimit.Date).ToList();
-            foreach(var coach in weeklyCoaches)
+            foreach (var coach in weeklyCoaches)
             {
                 Notification notification = new Notification();
                 notification.Id = Guid.NewGuid();
-                notification.Text = "Set your availability and training locations for the week.Improve your profile";
+                notification.Text = "New players are in your area ⚽";
                 notification.CreatedDate = DateTime.Now;
                 notification.UserId = coach.Id;
                 _unitOfWork.NotificationRepository.InsertOne(notification);
@@ -375,7 +375,7 @@ namespace NextLevelTrainingApi.Controllers
 
 
 
-            if(now.Day % 7 == 0)
+            if (now.Day % 7 == 0)
             {
                 foreach (var user in allUsers)
                 {
@@ -396,7 +396,7 @@ namespace NextLevelTrainingApi.Controllers
                     }
                 }
             }
-            
+
 
 
             return Ok();

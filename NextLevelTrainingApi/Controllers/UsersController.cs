@@ -33,7 +33,7 @@ namespace NextLevelTrainingApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class UsersController : ControllerBase
     {
         private IUnitOfWork _unitOfWork;
@@ -210,6 +210,30 @@ namespace NextLevelTrainingApi.Controllers
             return usr;
         }
 
+        [HttpPost]
+        [Route("SendNotification")]
+        public async Task<ActionResult<bool>> SendNotification(SendNotificationViewModel input)
+        {
+            var user = _unitOfWork.UserRepository.FindOne(x => x.EmailID == input.EmailID);
+
+
+            Notification notification = new Notification();
+            notification.Id = Guid.NewGuid();
+            notification.Text = "Time to train ⚽ Book your first 1 on 1 session today 🏆";
+            notification.CreatedDate = DateTime.Now;
+            notification.UserId = user.Id;
+
+            if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                await AndriodPushNotification(user.DeviceToken, notification);
+            }
+            else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+                await ApplePushNotification(user.DeviceToken, notification);
+            }
+
+            return true;
+        }
 
         [HttpPost]
         [Route("UpdateProfile")]
