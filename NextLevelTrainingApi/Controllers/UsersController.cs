@@ -70,6 +70,7 @@ namespace NextLevelTrainingApi.Controllers
             usr.FullName = user.FullName;
             usr.DeviceID = user.DeviceID;
             usr.State = user.State;
+            usr.Credits = user.Credits;
             usr.DeviceToken = user.DeviceToken;
             usr.EmailID = user.EmailID;
             usr.AboutUs = user.AboutUs;
