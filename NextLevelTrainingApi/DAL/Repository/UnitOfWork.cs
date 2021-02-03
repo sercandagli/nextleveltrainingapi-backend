@@ -101,5 +101,22 @@ namespace NextLevelTrainingApi.DAL.Repository
             get { return notificationRepository ?? (notificationRepository = new GenericRepository<Notification>(_mongoDatabase)); }
         }
 
+        private IGenericRepository<CreditHistory> creditHistoryRepository;
+        public IGenericRepository<CreditHistory> CreditHistoryRepository
+        {
+            get { return creditHistoryRepository ?? (creditHistoryRepository = new GenericRepository<CreditHistory>(_mongoDatabase)); }
+        }
+
+        private IGenericRepository<Leads> leadsRepository;
+        public IGenericRepository<Leads> LeadsRepository
+        {
+            get { return leadsRepository ?? (leadsRepository = new GenericRepository<Leads>(_mongoDatabase)); }
+        }
+
+        private IGenericRepository<Responses> responsesRepository;
+        public IGenericRepository<Responses> ResponsesRepository
+        {
+            get { return responsesRepository ?? (responsesRepository = new GenericRepository<Responses>(_mongoDatabase)); }
+        }
     }
 }

@@ -35,6 +35,7 @@ namespace NextLevelTrainingApi.ViewModels
         public string PostCode { get; set; }
 
         public string Address { get; set; }
+        public string State { get; set; }
 
         public string EmailID { get; set; }
 

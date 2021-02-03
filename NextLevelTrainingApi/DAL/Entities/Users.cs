@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.CodeAnalysis;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using Newtonsoft.Json;
 using NextLevelTrainingApi.DAL.Interfaces;
 using NextLevelTrainingApi.Helper;
 
@@ -16,24 +11,24 @@ namespace NextLevelTrainingApi.DAL.Entities
     {
         public Users()
         {
-            this.Teams = new List<Team>();
-            this.UpcomingMatches = new List<UpcomingMatch>();
-            this.Experiences = new List<Experience>();
-            this.TrainingLocations = new List<TrainingLocation>();
-            this.Coaches = new List<Coach>();
-            this.Availabilities = new List<Availability>();
-            this.TravelPostCodes = new List<TravelPostCode>();
-            this.Reviews = new List<Review>();
-            this.Qualifications = new List<UserQualification>();
-            this.HiddenPosts = new List<HiddenPosts>();
-            this.ConnectedUsers = new List<ConnectedUsers>();
+            Teams = new List<Team>();
+            UpcomingMatches = new List<UpcomingMatch>();
+            Experiences = new List<Experience>();
+            TrainingLocations = new List<TrainingLocation>();
+            Coaches = new List<Coach>();
+            Availabilities = new List<Availability>();
+            TravelPostCodes = new List<TravelPostCode>();
+            Reviews = new List<Review>();
+            Qualifications = new List<UserQualification>();
+            HiddenPosts = new List<HiddenPosts>();
+            ConnectedUsers = new List<ConnectedUsers>();
+            Credits = 0;
         }
-        [BsonId]
 
+        [BsonId]
         public Guid Id { get; set; }
 
         public string FullName { get; set; }
-
         public string Address { get; set; }
         public string State { get; set; }
 
@@ -65,6 +60,9 @@ namespace NextLevelTrainingApi.DAL.Entities
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }
         public int Rate { get; set; }
+
+        public int Credits { get; set; }
+
         public TravelMiles TravelMile { get; set; }
         public BankAccount BankAccount { get; set; }
         public List<Experience> Experiences { get; set; }

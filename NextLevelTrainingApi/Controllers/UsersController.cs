@@ -69,6 +69,7 @@ namespace NextLevelTrainingApi.Controllers
             usr.DeviceType = user.DeviceType;
             usr.FullName = user.FullName;
             usr.DeviceID = user.DeviceID;
+            usr.State = user.State;
             usr.DeviceToken = user.DeviceToken;
             usr.EmailID = user.EmailID;
             usr.AboutUs = user.AboutUs;
@@ -211,26 +212,173 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpPost]
+        [Route("SaveLead")]
+        public async Task<ActionResult<Users>> SaveLead(SaveLeadViewModel input)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            var Location = user?.State ?? input.Location;
+
+            var lead = new Leads
+            {
+                Id = Guid.NewGuid(),
+                FullName = input.FullName,
+                EmailID = input.EmailID,
+                MobileNo = input.MobileNo,
+                Experience = input.Experience,
+                Age = input.Age,
+                CoachingType = input.CoachingType,
+                Days = input.Days,
+                CoachingTime = input.CoachingTime,
+                DaysOfWeek = input.DaysOfWeek,
+                CreatedAt = DateTime.Now,
+                Location = input.Location
+            };
+            _unitOfWork.LeadsRepository.InsertOne(lead);
+
+            if (Location != null)
+            {
+                await PushNotification(user, $"{lead.FullName} is looking for Football Coaches in {Location}");
+            }
+
+            return user;
+        }
+
+        [HttpGet]
+        [Route("GetLeads/{Location}")]
+        public ActionResult<List<Leads>> GetLeads(string Location)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            var leads = _unitOfWork.LeadsRepository.FilterBy(x => x.Location.ToLower() == Location.ToLower()).ToList();
+
+
+            // get leads from players
+            var players = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.PLAYER && x.State.ToLower() == Location.ToLower()).ToList();
+
+            foreach (var player in players)
+            {
+                if (leads.Count(x => x.UserId == player.Id) == 0)
+                {
+                    leads.Add(new Leads()
+                    {
+                        Id = Guid.NewGuid(),
+                        FullName = player.FullName,
+                        EmailID = player.EmailID,
+                        MobileNo = player.MobileNo,
+                        Location = player.State,
+                        UserId = player.Id,
+                        CreatedAt = DateTime.Now,
+                    });
+                }
+            }
+
+            return leads;
+        }
+
+        [HttpPost]
+        [Route("PurchaseLead")]
+        public ActionResult<Responses> PurchaseLead(PurchaseLeadViewModel input)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            var lead = _unitOfWork.LeadsRepository.FindById(input.LeadId);
+
+
+            var response = new Responses
+            {
+                Id = Guid.NewGuid(),
+                CoachId = user.Id,
+                CreatedAt = DateTime.Now,
+                Lead = lead
+            };
+
+            _unitOfWork.ResponsesRepository.InsertOne(response);
+
+            return response;
+        }
+
+        [HttpGet]
+        [Route("GetResponses")]
+        public ActionResult<List<Responses>> GetResponses()
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            var responses = _unitOfWork.ResponsesRepository.FilterBy(x => x.CoachId == user.Id).ToList();
+
+            return responses;
+        }
+
+        [HttpPost]
+        [Route("BuyCredits")]
+        public ActionResult<CreditHistory> BuyCredits(BuyCreditsViewModel input)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            var creditHistory = new CreditHistory()
+            {
+                Id = Guid.NewGuid(),
+                CreatedAt = DateTime.Now,
+                Credits = input.Credits,
+                AmountPaid = input.AmountPaid,
+                UserId = user.Id
+            };
+            _unitOfWork.CreditHistoryRepository.InsertOne(creditHistory);
+
+            user.Credits += input.Credits;
+            _unitOfWork.UserRepository.ReplaceOne(user);
+            
+            return creditHistory;
+        }
+
+
+        [HttpGet]
+        [Route("GetCreditHistory")]
+        public ActionResult<List<CreditHistory>> GetCreditHistory()
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            var creditHistory = _unitOfWork.CreditHistoryRepository.FilterBy(x => x.UserId == user.Id).ToList();
+
+            return creditHistory;
+        }
+
+        [HttpPost]
         [Route("SendNotification")]
         public async Task<ActionResult<bool>> SendNotification(SendNotificationViewModel input)
         {
             var user = _unitOfWork.UserRepository.FindOne(x => x.EmailID == input.EmailID);
 
-
-            Notification notification = new Notification();
-            notification.Id = Guid.NewGuid();
-            notification.Text = "Time to train ⚽ Book your first 1 on 1 session today 🏆";
-            notification.CreatedDate = DateTime.Now;
-            notification.UserId = user.Id;
-
-            if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            if (user == null)
             {
-                await AndriodPushNotification(user.DeviceToken, notification);
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
-            else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-            {
-                await ApplePushNotification(user.DeviceToken, notification);
-            }
+
+            await PushNotification(user, input.Message);
 
             return true;
         }
@@ -248,6 +396,10 @@ namespace NextLevelTrainingApi.Controllers
 
             user.FullName = profile.FullName;
             user.Address = profile.Address;
+            if (profile.State != null)
+            {
+                user.State = profile.State;
+            }
             user.MobileNo = profile.MobileNo;
             user.Lat = profile.Lat;
             user.Lng = profile.Lng;
@@ -2891,6 +3043,7 @@ namespace NextLevelTrainingApi.Controllers
                     Id = x.Id,
                     Role = x.Role,
                     Address = x.Address,
+                    State = x.State,
                     EmailID = x.EmailID,
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
@@ -2963,6 +3116,7 @@ namespace NextLevelTrainingApi.Controllers
                     Id = x.Id,
                     Role = x.Role,
                     Address = x.Address,
+                    State = x.State,
                     EmailID = x.EmailID,
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
@@ -2989,6 +3143,7 @@ namespace NextLevelTrainingApi.Controllers
                     Id = x.Id,
                     Role = x.Role,
                     Address = x.Address,
+                    State = x.State,
                     EmailID = x.EmailID,
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
@@ -3117,6 +3272,7 @@ namespace NextLevelTrainingApi.Controllers
                     Id = x.Id,
                     Role = x.Role,
                     Address = x.Address,
+                    State = x.State,
                     EmailID = x.EmailID,
                     FullName = x.FullName,
                     MobileNo = x.MobileNo,
@@ -3712,6 +3868,27 @@ namespace NextLevelTrainingApi.Controllers
                 error.StackTrace = "Apple Push Notification: " + notification.Text + " DeviceToken:" + deviceToken;
                 error.CreatedDate = DateTime.Now;
                 _unitOfWork.ErrorLogRepository.InsertOne(error);
+            }
+        }
+
+        private async Task PushNotification(Users user, string text)
+        {
+            Notification notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                Text = text,
+                CreatedDate = DateTime.Now,
+                UserId = user.Id
+            };
+            _unitOfWork.NotificationRepository.InsertOne(notification);
+
+            if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                await AndriodPushNotification(user.DeviceToken, notification);
+            }
+            else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+                await ApplePushNotification(user.DeviceToken, notification);
             }
         }
     }
