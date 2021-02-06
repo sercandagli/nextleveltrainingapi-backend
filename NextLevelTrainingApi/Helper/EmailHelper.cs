@@ -12,39 +12,51 @@ namespace NextLevelTrainingApi.Helper
 {
     public static class EmailHelper
     {
-        public static void SendEmail(string toEmail, EmailSettings settings, string emailType, string value = "")
+        public static void SendEmail(string toEmail, EmailSettings settings, string emailType, Dictionary<string, string> values = null)
         {
             string content = "";
             string subject = "";
             switch (emailType)
             {
                 case "booking":
-                    content = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/Booking Confirmation.html"));
-                    content = content.Replace("{{BookingDate}}", value);
+                    content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/Booking Confirmation.html"));
+                    content = content.Replace("{{BookingDate}}", values.GetValueOrDefault("BookingDate", ""));
                     subject = "Booking Confirmed";
                     break;
                 case "reschedule":
-                    content = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/BookingReschedule.html"));
-                    content = content.Replace("{{BookingDate}}", value);
+                    content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/BookingReschedule.html"));
+                    content = content.Replace("{{BookingDate}}", values.GetValueOrDefault("BookingDate", ""));
                     subject = "Booking Rescheduled";
                     break;
                 case "cancelbooking":
-                    content = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/CancelBooking.html"));
+                    content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/CancelBooking.html"));
 
                     subject = "Booking Cancelled";
                     break;
                 case "resetpassword":
-                    content = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/Resetpassword.html"));
-                    content = content.Replace("{{Password}}", value);
+                    content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/Resetpassword.html"));
+                    content = content.Replace("{{Password}}", values.GetValueOrDefault("Password", ""));
                     subject = "Password Reset";
                     break;
                 case "signupcoach":
-                    content = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/SignupCoach.html"));
+                    content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/SignupCoach.html"));
                     subject = "Welcome to the NextLevel";
                     break;
                 case "signupplayer":
-                    content = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/SignupPlayer.html"));
+                    content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/SignupPlayer.html"));
                     subject = "Welcome to the NextLevel";
+                    break;
+                case "newlead":
+                    content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Templates/NewLead.html"));
+                    string FullName = values.GetValueOrDefault("FullName", "");
+                    string Location = values.GetValueOrDefault("Location", "");
+                    string Phone = values.GetValueOrDefault("Phone", "");
+                    string EmailID = values.GetValueOrDefault("EmailID", "");
+                    subject = $"🔔 {FullName} is looking for Football Coaches in {Location}";
+                    content = content.Replace("{{FullName}}", FullName);
+                    content = content.Replace("{{Location}}", Location);
+                    content = content.Replace("{{Phone}}", Phone);
+                    content = content.Replace("{{EmailID}}", EmailID);
                     break;
             }
 

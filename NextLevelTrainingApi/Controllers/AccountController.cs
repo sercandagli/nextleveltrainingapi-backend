@@ -73,6 +73,13 @@ namespace NextLevelTrainingApi.Controllers
                 EmailHelper.SendEmail(user.EmailID, _emailSettings, "signupplayer");
             }
 
+            //var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.COACH && x.State == user.State);
+
+            //foreach (var coach in coaches)
+            //{
+            //    EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead");
+            //}
+
             return user;
         }
 
@@ -305,7 +312,9 @@ namespace NextLevelTrainingApi.Controllers
             user.IsTempPassword = true;
             _unitOfWork.UserRepository.ReplaceOne(user);
 
-            EmailHelper.SendEmail(user.EmailID, _emailSettings, "resetpassword", pwd);
+            var values = new Dictionary<string, string>();
+            values.Add("Password", pwd);
+            EmailHelper.SendEmail(user.EmailID, _emailSettings, "resetpassword", values);
             return true;
         }
 

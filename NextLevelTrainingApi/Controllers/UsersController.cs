@@ -219,26 +219,60 @@ namespace NextLevelTrainingApi.Controllers
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
             var Location = user?.State ?? input.Location;
 
-            var lead = new Leads
+            var lead = _unitOfWork.LeadsRepository.FindOne(x => x.UserId == user.Id);
+
+            if (lead != null)
             {
-                Id = Guid.NewGuid(),
-                FullName = input.FullName,
-                EmailID = input.EmailID,
-                MobileNo = input.MobileNo,
-                Experience = input.Experience,
-                Age = input.Age,
-                CoachingType = input.CoachingType,
-                Days = input.Days,
-                CoachingTime = input.CoachingTime,
-                DaysOfWeek = input.DaysOfWeek,
-                CreatedAt = DateTime.Now,
-                Location = input.Location
-            };
-            _unitOfWork.LeadsRepository.InsertOne(lead);
+                lead.FullName = input.FullName;
+                lead.EmailID = input.EmailID;
+                lead.MobileNo = input.MobileNo;
+                lead.Experience = input.Experience;
+                lead.Age = input.Age;
+                lead.CoachingType = input.CoachingType;
+                lead.Days = input.Days;
+                lead.CoachingTime = input.CoachingTime;
+                lead.DaysOfWeek = input.DaysOfWeek;
+                lead.Location = input.Location;
+
+                _unitOfWork.LeadsRepository.ReplaceOne(lead);
+            }
+            else
+            {
+                lead = new Leads
+                {
+                    Id = user.Id,
+                    FullName = input.FullName,
+                    EmailID = input.EmailID,
+                    MobileNo = input.MobileNo,
+                    Experience = input.Experience,
+                    Age = input.Age,
+                    CoachingType = input.CoachingType,
+                    Days = input.Days,
+                    CoachingTime = input.CoachingTime,
+                    DaysOfWeek = input.DaysOfWeek,
+                    CreatedAt = DateTime.Now,
+                    Location = input.Location,
+                    UserId = user.Id
+                };
+                _unitOfWork.LeadsRepository.InsertOne(lead);
+            }
+
 
             if (Location != null)
             {
-                await PushNotification(user, $"{lead.FullName} is looking for Football Coaches in {Location}");
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.COACH && x.State == Location);
+
+                foreach (var coach in coaches)
+                {
+                    await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {Location}", "New Lead");
+
+                    var values = new Dictionary<string, string>();
+                    values.Add("FullName", user.FullName);
+                    values.Add("Location", Location);
+                    values.Add("Phone", GetMaskedMobileNo(user.MobileNo));
+                    values.Add("EmailID", GetMaskedEmail(user.EmailID));
+                    EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead", values);
+                }
             }
 
             return user;
@@ -280,6 +314,22 @@ namespace NextLevelTrainingApi.Controllers
 
             return leads;
         }
+        
+        [HttpGet]
+        [Route("GetLead/{Id}")]
+        public ActionResult<Leads> GetLead(Guid Id)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            var lead = _unitOfWork.LeadsRepository.FindOne(x => x.UserId == Id);
+
+            return lead;
+        }
 
         [HttpPost]
         [Route("PurchaseLead")]
@@ -294,6 +344,17 @@ namespace NextLevelTrainingApi.Controllers
 
             var lead = _unitOfWork.LeadsRepository.FindById(input.LeadId);
 
+            var exists = _unitOfWork.ResponsesRepository.FindOne(x => x.CoachId == user.Id && x.Lead.Id == lead.Id);
+
+            if (exists != null)
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Lead already purchased." } } });
+            }
+
+            if (user.Credits == 0)
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Not Enough Credits." } } });
+            }
 
             var response = new Responses
             {
@@ -303,6 +364,9 @@ namespace NextLevelTrainingApi.Controllers
                 Lead = lead
             };
 
+            user.Credits -= 1;
+
+            _unitOfWork.UserRepository.ReplaceOne(user);
             _unitOfWork.ResponsesRepository.InsertOne(response);
 
             return response;
@@ -379,7 +443,7 @@ namespace NextLevelTrainingApi.Controllers
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
-            await PushNotification(user, input.Message);
+            await PushNotification(user, input.Message, input.Title ?? "Test Notification");
 
             return true;
         }
@@ -2042,8 +2106,19 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("SendMessage")]
-        public ActionResult<MessageViewModel> SendMessage(MessageViewModel messageVM)
+        public async Task<ActionResult<MessageViewModel>> SendMessage(MessageViewModel messageVM)
         {
+            var noMessages = _unitOfWork.MessageRepository.FilterBy(x => x.SenderId == messageVM.SenderId && x.ReceiverId == messageVM.ReceiverId).Count();
+
+            if (noMessages != 0)
+            {
+                var user = _unitOfWork.UserRepository.FindById(messageVM.SenderId);
+                if (user.Credits > 0)
+                {
+                    user.Credits -= 1;
+                    _unitOfWork.UserRepository.ReplaceOne(user);
+                }
+            }
 
             var message = new Message()
             {
@@ -2057,23 +2132,9 @@ namespace NextLevelTrainingApi.Controllers
 
             _unitOfWork.MessageRepository.InsertOne(message);
 
-            Notification notification = new Notification();
-            notification.Id = Guid.NewGuid();
-            notification.Text = "You have a message";
-            notification.CreatedDate = DateTime.Now;
-            notification.UserId = messageVM.ReceiverId;
-            _unitOfWork.NotificationRepository.InsertOne(notification);
-
             var usr = _unitOfWork.UserRepository.FindById(messageVM.ReceiverId);
 
-            if (usr.DeviceType != null && Convert.ToString(usr.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-            {
-                AndriodPushNotification(usr.DeviceToken, notification);
-            }
-            else if (usr.DeviceType != null && Convert.ToString(usr.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-            {
-                ApplePushNotification(usr.DeviceToken, notification);
-            }
+            await PushNotification(usr, "You have a message", null);
 
             return messageVM;
 
@@ -2329,7 +2390,9 @@ namespace NextLevelTrainingApi.Controllers
                 mailBookingSessions += session.BookingDate.ToString("dd MMM yyyy") + " " + session.FromTime + " - " + session.ToTime + ",";
 
             mailBookingSessions = mailBookingSessions.Substring(0, mailBookingSessions.Length - 1);
-            EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", mailBookingSessions);
+            var values = new Dictionary<string, string>();
+            values.Add("BookingDate", mailBookingSessions);
+            EmailHelper.SendEmail(usr.EmailID, _emailSettings, "booking", values);
 
             var coachUser = _unitOfWork.UserRepository.FindById(booking.CoachID);
             if (coachUser.DeviceType != null && Convert.ToString(coachUser.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
@@ -3817,8 +3880,61 @@ namespace NextLevelTrainingApi.Controllers
 
         }
 
+        [HttpGet]
+        [Route("SendEmail/{{EmailID}}")]
+        public ActionResult<bool> SendEmail(string EmailID)
+        {
+            var values = new Dictionary<string, string>();
+            values.Add("FullName", "Troy");
+            values.Add("Location", "Chipping Norton, OX7");
+            values.Add("Phone", "073** ****");
+            values.Add("EmailID", "t********e@y****.com");
+            EmailHelper.SendEmail(EmailID, _emailSettings, "newlead", values);
 
-        private async Task AndriodPushNotification(string deviceToken, Notification notification)
+            return true;
+        }
+
+        [HttpGet]
+        [Route("UpdateUserStates/{Role}")]
+        public async Task<ActionResult<List<Users>>> UpdateUserStates(string Role)
+        {
+            var players = _unitOfWork.UserRepository.FilterBy(x => x.Role == Role).ToList();
+
+            foreach (var player in players)
+            {
+                if (player.PostCode != null)
+                {
+                    try
+                    {
+                        var address = await GetAddress(player.PostCode);
+                        player.State = address;
+                        _unitOfWork.UserRepository.ReplaceOne(player);
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+                }
+            }
+
+            return players;
+        }
+
+        private async Task<string> GetAddress(string postCode)
+        {
+            var apiKey = "ak_kgpgg5sceGe2S9cpVSSeU9UJo8YrI";
+            using var httpClient = new HttpClient();
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"https://api.ideal-postcodes.co.uk/v1/postcodes/{postCode}?api_key={apiKey}");
+            var http = new HttpClient();
+            using var response = await httpClient.SendAsync(httpRequest);
+            var responseString = await response.Content.ReadAsStringAsync();
+            var res = JsonConvert.DeserializeObject<PostCodesResponseModel>(responseString);
+            var address = res.Result.First();
+
+            return $"{address.District} {address.County}, {address.Country}";
+        }
+
+        private async Task AndriodPushNotification(string deviceToken, Notification notification, string title = null)
         {
                   
             GoogleNotification googleNotification = new GoogleNotification
@@ -3831,7 +3947,7 @@ namespace NextLevelTrainingApi.Controllers
                 },
                 Notification = new NotificationModel
                 {
-                    Title = notification.Text,
+                    Title = title ?? notification.Text,
                     Text = notification.Text,
                     Icon = !string.IsNullOrEmpty(notification.Image) ? notification.Image : "https://www.nextlevelfootballacademy.co.uk/wp-content/uploads/2019/06/logo.png"
                 }
@@ -3872,7 +3988,7 @@ namespace NextLevelTrainingApi.Controllers
             }
         }
 
-        private async Task PushNotification(Users user, string text)
+        private async Task PushNotification(Users user, string text, string title)
         {
             Notification notification = new Notification
             {
@@ -3885,12 +4001,38 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
             {
-                await AndriodPushNotification(user.DeviceToken, notification);
+                await AndriodPushNotification(user.DeviceToken, notification, title);
             }
             else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
             {
                 await ApplePushNotification(user.DeviceToken, notification);
             }
+        }
+
+        private string GetMaskedEmail(string email)
+        {
+            string[] parts = email.Split('@');
+            string domainExt = Path.GetExtension(email);
+            string result = string.Format("{0}****{1}@{2}****{3}{4}",
+                parts[0][0],
+                parts[0].Substring(parts[0].Length - 1),
+                parts[1][0],
+                parts[1].Substring(parts[1].Length - domainExt.Length - 1, 1),
+                domainExt
+            );
+
+            return result;
+        }
+
+        private string GetMaskedMobileNo(string mobile)
+        {
+            string result = string.Format("{0}{1}{2}* ****",
+                mobile[0],
+                mobile[1],
+                mobile[2]
+            );
+
+            return result;
         }
     }
 }

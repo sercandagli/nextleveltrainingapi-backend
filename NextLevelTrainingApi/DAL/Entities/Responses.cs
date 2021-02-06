@@ -6,7 +6,7 @@ using NextLevelTrainingApi.Helper;
 
 namespace NextLevelTrainingApi.DAL.Entities
 {
-    [BsonCollection("Leads")]
+    [BsonCollection("Responses")]
     public class Responses : IDocument
     {
         public Responses()
