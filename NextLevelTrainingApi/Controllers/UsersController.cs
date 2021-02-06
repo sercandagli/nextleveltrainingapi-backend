@@ -271,6 +271,7 @@ namespace NextLevelTrainingApi.Controllers
                     values.Add("Location", Location);
                     values.Add("Phone", GetMaskedMobileNo(user.MobileNo));
                     values.Add("EmailID", GetMaskedEmail(user.EmailID));
+                    values.Add("LatLng", $"{user.Lat},{user.Lng}");
                     EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead", values);
                 }
             }
@@ -3881,14 +3882,17 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("SendEmail/{{EmailID}}")]
-        public ActionResult<bool> SendEmail(string EmailID)
+        [Route("SendEmail/{{EmailID}}/{{UserId}}")]
+        public ActionResult<bool> SendEmail(string EmailID, Guid UserId)
         {
+            var user = _unitOfWork.UserRepository.FindById(UserId);
+
             var values = new Dictionary<string, string>();
-            values.Add("FullName", "Troy");
-            values.Add("Location", "Chipping Norton, OX7");
-            values.Add("Phone", "073** ****");
-            values.Add("EmailID", "t********e@y****.com");
+            values.Add("FullName", user.FullName);
+            values.Add("Location", user.State);
+            values.Add("Phone", GetMaskedMobileNo(user.MobileNo));
+            values.Add("EmailID", GetMaskedEmail(user.EmailID));
+            values.Add("LatLng", $"{user.Lat},{user.Lng}");
             EmailHelper.SendEmail(EmailID, _emailSettings, "newlead", values);
 
             return true;

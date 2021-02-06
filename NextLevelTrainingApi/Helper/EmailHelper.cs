@@ -52,11 +52,13 @@ namespace NextLevelTrainingApi.Helper
                     string Location = values.GetValueOrDefault("Location", "");
                     string Phone = values.GetValueOrDefault("Phone", "");
                     string EmailID = values.GetValueOrDefault("EmailID", "");
+                    string LatLng = values.GetValueOrDefault("LatLng", "40.718217,-73.998284");
                     subject = $"🔔 {FullName} is looking for Football Coaches in {Location}";
                     content = content.Replace("{{FullName}}", FullName);
                     content = content.Replace("{{Location}}", Location);
                     content = content.Replace("{{Phone}}", Phone);
                     content = content.Replace("{{EmailID}}", EmailID);
+                    content = content.Replace("{{LatLng}}", LatLng);
                     break;
             }
 
