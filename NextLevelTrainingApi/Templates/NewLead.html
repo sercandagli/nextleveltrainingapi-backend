@@ -1,11 +1,12 @@
 ﻿<!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml"
+      xmlns:o="urn:schemas-microsoft-com:office:office">
 
 <head>
-    <title>Email Template</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIwzALxUPNbatRBj3Xi1Uhp0fFzwWNBkE&callback=initMap&libraries=&v=weekly"
-            defer></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <title></title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             background-color: white;
@@ -41,22 +42,6 @@
             width: 300px;
         }
     </style>
-
-    <script>// Initialize and add the map
-        function initMap() {
-            // The location of Uluru
-            const uluru = { lat: -25.344, lng: 131.036 };
-            // The map, centered at Uluru
-            const map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 4,
-                center: uluru,
-            });
-            // The marker, positioned at Uluru
-            // const marker = new google.maps.Marker({
-            //     position: uluru,
-            //     map: map,
-            // });
-        }</script>
 </head>
 
 <body>
@@ -72,18 +57,23 @@
             </p>
         </div>
 
-        <div style="width: auto; display: flex; align-items: center;">
-            <i class="material-icons" style="font-size:14px; color:grey; margin-left: 20px;">location_on</i>
+        <div style="width: '100%'; display: flex; align-items: center;">
+            <!-- <i class="material-icons" style="font-size:14px; color:grey; margin-left: 20px;">location_on</i> -->
+            <img style="height: 10px; color:grey; margin-left: 20px; margin-top: 15px; align-self: center;"
+                 src="https://res.cloudinary.com/dwsvulcmm/image/upload/v1612451363/pngfind.com-marker-png-732203_xt85lr.png" />
+
             <p style="color: #818181; margin-left: 5px; font-size: small;">{{Location}}</p>
         </div>
 
         <div style="width: auto; display: flex; align-items: center;">
-            <i class="material-icons" style="font-size:14px; margin-left: 20px; color:grey;">phone</i>
+            <img style="height: 10px; color:grey; margin-left: 20px; margin-top: 15px; align-self: center;"
+                 src="https://res.cloudinary.com/dwsvulcmm/image/upload/v1612454685/call_knbqsk.png" />
             <p style="color: #818181; margin-left: 5px; font-size: small;">{{Phone}}</p>
         </div>
 
         <div style="width: auto; display: flex; align-items: center;">
-            <i class="material-icons" style="font-size:14px; margin-left: 20px; color:grey;">email</i>
+            <img style="height: 10px; color:grey; margin-left: 20px; margin-top: 15px; align-self: center;"
+                 src="https://res.cloudinary.com/dwsvulcmm/image/upload/v1612454686/email_sdh1mu.png" />
             <p style="color: #818181; margin-left: 5px; font-size: small;">{{EmailID}}</p>
         </div>
 
@@ -91,7 +81,12 @@
             <p style="color: #818181; margin-left: 20px; font-size: small;">1 Credit respond</p>
         </div>
 
-        <div id="map"></div>
+        <div style="width: auto; display: flex; align-items: center;">
+            <img id="map" src="https://maps.googleapis.com/maps/api/staticmap?center=Brooklyn+Bridge,New+York,NY&zoom=13&size=600x300&maptype=roadmap
+&markers=color:blue%7Clabel:S%7C40.702147,-74.015794&markers=color:green%7Clabel:G%7C40.711614,-74.012318
+&markers=color:red%7Clabel:C%7C40.718217,-73.998284
+&key=AIzaSyBIwzALxUPNbatRBj3Xi1Uhp0fFzwWNBkE" />
+        </div>›››
 
         <div style="width: auto; display: flex; align-items: center;">
             <button class="button button2">Contact {{FullName}} Now</button>
