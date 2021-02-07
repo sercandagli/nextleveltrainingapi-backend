@@ -318,7 +318,7 @@ namespace NextLevelTrainingApi.Controllers
         
         [HttpGet]
         [Route("GetLead/{Id}")]
-        public ActionResult<Leads> GetLead(Guid Id)
+        public ActionResult<LeadViewModel> GetLead(Guid Id)
         {
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
@@ -329,7 +329,32 @@ namespace NextLevelTrainingApi.Controllers
 
             var lead = _unitOfWork.LeadsRepository.FindOne(x => x.UserId == Id);
 
-            return lead;
+            if (lead == null)
+            {
+                return null;
+            }
+
+            var numResponses = _unitOfWork.ResponsesRepository.FilterBy(x => x.Lead.Id == lead.Id).Count();
+
+            var leadVM = new LeadViewModel()
+            {
+                Id = lead.Id,
+                FullName = lead.FullName,
+                EmailID = lead.EmailID,
+                MobileNo = lead.MobileNo,
+                Experience = lead.Experience,
+                Age = lead.Age,
+                CoachingType = lead.CoachingType,
+                Days = lead.Days,
+                CoachingTime = lead.CoachingTime,
+                DaysOfWeek = lead.DaysOfWeek,
+                CreatedAt = lead.CreatedAt,
+                Location = lead.Location,
+                UserId = lead.UserId,
+                NumResponses = numResponses
+            };
+
+            return leadVM;
         }
 
         [HttpPost]
