@@ -266,13 +266,22 @@ namespace NextLevelTrainingApi.Controllers
                 {
                     await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {Location}", "New Lead");
 
-                    var values = new Dictionary<string, string>();
-                    values.Add("FullName", user.FullName);
-                    values.Add("Location", Location);
-                    values.Add("Phone", GetMaskedMobileNo(user.MobileNo));
-                    values.Add("EmailID", GetMaskedEmail(user.EmailID));
-                    values.Add("LatLng", $"{user.Lat},{user.Lng}");
-                    EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead", values);
+                    try
+                    {
+                        var values = new Dictionary<string, string>
+                        {
+                            { "FullName", user.FullName },
+                            { "Location", Location },
+                            { "Phone", GetMaskedMobileNo(user.MobileNo) },
+                            { "EmailID", GetMaskedEmail(user.EmailID) },
+                            { "LatLng", $"{user.Lat},{user.Lng}" }
+                        };
+                        EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead", values);
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
                 }
             }
 
@@ -3922,6 +3931,96 @@ namespace NextLevelTrainingApi.Controllers
 
             return true;
         }
+
+        [HttpPost]
+        [Route("WebFormSubmit")]
+        public async Task<ActionResult<JotFormResponseModel>> WebFormSubmit()
+        {
+
+            var apiKey = "9f10a7e96bcb43860b462ccdc72e7125";
+            using var httpClient = new HttpClient();
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"https://eu-api.jotform.com/form/203417025701039/submissions?apiKey={apiKey}");
+            var http = new HttpClient();
+
+            using var response = await httpClient.SendAsync(httpRequest);
+            var responseString = await response.Content.ReadAsStringAsync();
+            var res = JsonConvert.DeserializeObject<JotFormResponseModel>(responseString);
+
+            if (res.ResponseCode != 200)
+            {
+                return null;
+            }
+
+            foreach (var content in res.Content)
+            {
+                var lead = new Leads();
+                foreach (var ans in content.Answers.Values)
+                {
+                    if (ans.Name == "Experience")
+                    {
+                        lead.Experience = ans.Answer;
+                    }
+                    if (ans.Name == "Age")
+                    {
+                        lead.Age = ans.Answer;
+                    }
+                    if (ans.Name == "CoachingType")
+                    {
+                        lead.CoachingType = ans.PrettyFormat.Split("; ").ToList();
+                    }
+                    if (ans.Name == "Days")
+                    {
+                        lead.Days = ans.PrettyFormat.Split("; ").ToList();
+                    }
+                    if (ans.Name == "CoachingTime")
+                    {
+                        lead.CoachingTime = ans.PrettyFormat.Split("; ").ToList();
+                    }
+                    if (ans.Name == "DaysOfWeek")
+                    {
+                        lead.DaysOfWeek = new List<string> { ans.Answer };
+                    }
+                    if (ans.Name == "Location")
+                    {
+                        lead.Location = ans.Answer;
+                    }
+                    if (ans.Name == "MobileNo")
+                    {
+                        lead.MobileNo = ans.PrettyFormat;
+                    }
+                    if (ans.Name == "FullName")
+                    {
+                        lead.FullName = ans.PrettyFormat;
+                    }
+                    if (ans.Name == "EmailID")
+                    {
+                        lead.EmailID = ans.Answer;
+                    }
+                }
+                lead.Id = Guid.NewGuid();
+                lead.CreatedAt = DateTime.Now;
+                _unitOfWork.LeadsRepository.InsertOne(lead);
+            }
+
+
+            foreach (var content in res.Content)
+            {
+                await DeleteSubmission(content.Id);
+            }
+
+            return res;
+        }
+
+        private async Task DeleteSubmission(string Id)
+        {
+            var apiKey = "9f10a7e96bcb43860b462ccdc72e7125";
+            using var httpClient = new HttpClient();
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Delete, $"https://eu-api.jotform.com/submission/{Id}?apiKey={apiKey}");
+            var http = new HttpClient();
+
+            await httpClient.SendAsync(httpRequest);
+        }
+
 
         [HttpGet]
         [Route("UpdateUserStates/{Role}")]
