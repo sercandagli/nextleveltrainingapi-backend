@@ -20,5 +20,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public int AmountPaid { get; set; }
 
         public Guid UserId { get; set; }
+
+        public string PaypalPaymentId { get; set; }
     }
 }

@@ -440,7 +440,8 @@ namespace NextLevelTrainingApi.Controllers
                 CreatedAt = DateTime.Now,
                 Credits = input.Credits,
                 AmountPaid = input.AmountPaid,
-                UserId = user.Id
+                UserId = user.Id,
+                PaypalPaymentId = ""
             };
             _unitOfWork.CreditHistoryRepository.InsertOne(creditHistory);
 
@@ -4099,7 +4100,7 @@ namespace NextLevelTrainingApi.Controllers
         private async Task ApplePushNotification(string deviceToken, Notification notification)
         {
             HttpClient httpClient = new HttpClient();
-            ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
+            ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Production, TeamId = "Y77A2C426U" };
             AppleNotification appleNotification = new AppleNotification();
             appleNotification.Aps.AlertBody = notification.Text;
             appleNotification.Notification = JsonConvert.SerializeObject(notification);
