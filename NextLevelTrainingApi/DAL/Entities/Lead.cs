@@ -15,6 +15,7 @@ namespace NextLevelTrainingApi.DAL.Entities
             Days = new List<string>();
             CoachingTime = new List<string>();
             DaysOfWeek = new List<string>();
+            Web = false;
         }
 
         [BsonId]
@@ -32,6 +33,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public List<string> Days { get; set; }
         public List<string> CoachingTime { get; set; }
         public List<string> DaysOfWeek { get; set; }
+        public bool Web { get; set; }
 
         public Guid? UserId { get; set; }
     }

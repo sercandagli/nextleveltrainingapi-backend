@@ -43,6 +43,7 @@ namespace NextLevelTrainingApi.Controllers
         private readonly APNSettings _apnSettings;
         private EmailSettings _emailSettings;
         //private readonly HttpClient _httpClient;
+
         public UsersController(IUnitOfWork unitOfWork, IUserContext userContext, IOptions<JWTAppSettings> jwtAppSettings, IOptions<EmailSettings> emailSettings, IOptions<FCMSettings> fcmSettings, IOptions<APNSettings> apnSettings)
         {
             _unitOfWork = unitOfWork;
@@ -64,33 +65,35 @@ namespace NextLevelTrainingApi.Controllers
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
-            UserDataViewModel usr = new UserDataViewModel();
-            usr.Id = user.Id;
-            usr.DeviceType = user.DeviceType;
-            usr.FullName = user.FullName;
-            usr.DeviceID = user.DeviceID;
-            usr.State = user.State;
-            usr.Credits = user.Credits;
-            usr.DeviceToken = user.DeviceToken;
-            usr.EmailID = user.EmailID;
-            usr.AboutUs = user.AboutUs;
-            usr.AccessToken = user.AccessToken;
-            usr.Accomplishment = user.Accomplishment;
-            usr.IsTempPassword = user.IsTempPassword;
-            usr.Address = user.Address;
-            usr.Lat = user.Lat;
-            usr.Lng = user.Lng;
-            usr.Featured = user.Featured;
-            usr.PostCode = user.PostCode;
-            usr.Rate = user.Rate;
-            usr.ProfileImageHeight = user.ProfileImageHeight;
-            usr.ProfileImageWidth = user.ProfileImageWidth;
-            usr.SocialLoginType = user.SocialLoginType;
-            usr.Role = user.Role;
-            usr.MobileNo = user.MobileNo;
-            usr.ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage);
-            usr.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == usr.Id).Select(x => new
-                   BookingViewModel()
+            UserDataViewModel usr = new UserDataViewModel
+            {
+                Id = user.Id,
+                DeviceType = user.DeviceType,
+                FullName = user.FullName,
+                DeviceID = user.DeviceID,
+                State = user.State,
+                Credits = user.Credits,
+                DeviceToken = user.DeviceToken,
+                EmailID = user.EmailID,
+                AboutUs = user.AboutUs,
+                AccessToken = user.AccessToken,
+                Accomplishment = user.Accomplishment,
+                IsTempPassword = user.IsTempPassword,
+                Address = user.Address,
+                Lat = user.Lat,
+                Lng = user.Lng,
+                Featured = user.Featured,
+                PostCode = user.PostCode,
+                Rate = user.Rate,
+                ProfileImageHeight = user.ProfileImageHeight,
+                ProfileImageWidth = user.ProfileImageWidth,
+                SocialLoginType = user.SocialLoginType,
+                Role = user.Role,
+                MobileNo = user.MobileNo,
+                ProfileImage = string.IsNullOrEmpty(user.ProfileImage) ? "" : ((user.ProfileImage.Contains("http://") || user.ProfileImage.Contains("https://")) ? user.ProfileImage : _jwtAppSettings.AppBaseURL + user.ProfileImage)
+            };
+
+            usr.Bookings = _unitOfWork.BookingRepository.FilterBy(x => x.CoachID == usr.Id).Select(x => new BookingViewModel()
             {
                 Amount = x.Amount,
                 BookingNumber = x.BookingNumber,
@@ -103,7 +106,8 @@ namespace NextLevelTrainingApi.Controllers
                 PaymentStatus = x.PaymentStatus,
                 PlayerID = x.PlayerID,
                 SentDate = x.SentDate,
-                Sessions = x.Sessions.Select(x => new BookingTimeViewModel {
+                Sessions = x.Sessions.Select(x => new BookingTimeViewModel
+                {
                     BookingDate = x.BookingDate,
                     FromTime = x.FromTime,
                     ToTime = x.ToTime,
@@ -125,8 +129,7 @@ namespace NextLevelTrainingApi.Controllers
                     PlayerName = _unitOfWork.UserRepository.FindById(b.PlayerId).FullName,
                     CreatedDate = b.CreatedDate
                 }).ToList()
-            }
-                ).ToList();
+            }).ToList();
 
             usr.Bookings.ForEach(b => b.BookingReviews.ForEach(r => r.PlayerProfileImage = string.IsNullOrEmpty(r.PlayerProfileImage) ? "" : ((r.PlayerProfileImage.Contains("http://") || r.PlayerProfileImage.Contains("https://")) ? r.PlayerProfileImage : _jwtAppSettings.AppBaseURL + r.PlayerProfileImage)));
 
@@ -260,7 +263,8 @@ namespace NextLevelTrainingApi.Controllers
 
             if (Location != null)
             {
-                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.COACH && x.State == Location);
+                var county = Location.Split(", ").First().Split(" ").Last();
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.COACH && x.State.Contains(county));
 
                 foreach (var coach in coaches)
                 {
@@ -278,10 +282,7 @@ namespace NextLevelTrainingApi.Controllers
                         };
                         EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead", values);
                     }
-                    catch (Exception ex)
-                    {
-
-                    }
+                    catch { }
                 }
             }
 
@@ -292,35 +293,14 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetLeads/{Location}")]
         public ActionResult<List<Leads>> GetLeads(string Location)
         {
-            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+            //var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
 
-            if (user == null)
-            {
-                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
-            }
+            //if (user == null)
+            //{
+            //    return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            //}
 
-            var leads = _unitOfWork.LeadsRepository.FilterBy(x => x.Location.ToLower() == Location.ToLower()).ToList();
-
-
-            // get leads from players
-            var players = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.PLAYER && x.State.ToLower() == Location.ToLower()).ToList();
-
-            foreach (var player in players)
-            {
-                if (leads.Count(x => x.UserId == player.Id) == 0)
-                {
-                    leads.Add(new Leads()
-                    {
-                        Id = Guid.NewGuid(),
-                        FullName = player.FullName,
-                        EmailID = player.EmailID,
-                        MobileNo = player.MobileNo,
-                        Location = player.State,
-                        UserId = player.Id,
-                        CreatedAt = DateTime.Now,
-                    });
-                }
-            }
+            var leads = _unitOfWork.LeadsRepository.FilterBy(x => x.Location.ToLower().Contains(Location.ToLower()) && x.Web == true).ToList();
 
             return leads;
         }
@@ -472,7 +452,7 @@ namespace NextLevelTrainingApi.Controllers
         [Route("SendNotification")]
         public async Task<ActionResult<bool>> SendNotification(SendNotificationViewModel input)
         {
-            var user = _unitOfWork.UserRepository.FindOne(x => x.EmailID == input.EmailID);
+            var user = _unitOfWork.UserRepository.FindOne(x => x.EmailID.ToLower() == input.EmailID.ToLower());
 
             if (user == null)
             {
@@ -2146,7 +2126,7 @@ namespace NextLevelTrainingApi.Controllers
         {
             var noMessages = _unitOfWork.MessageRepository.FilterBy(x => x.SenderId == messageVM.SenderId && x.ReceiverId == messageVM.ReceiverId).Count();
 
-            if (noMessages != 0)
+            if (noMessages == 0)
             {
                 var user = _unitOfWork.UserRepository.FindById(messageVM.SenderId);
                 if (user.Credits > 0)
@@ -2174,6 +2154,22 @@ namespace NextLevelTrainingApi.Controllers
 
             return messageVM;
 
+        }
+
+        [HttpGet]
+        [Route("MessagesExist/{CoachId}")]
+        public ActionResult<bool> MessagesExist(Guid CoachId)
+        {
+            var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
+
+            if (user == null)
+            {
+                return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
+            }
+
+            var noMessages = _unitOfWork.MessageRepository.FilterBy(x => x.SenderId == user.Id && x.ReceiverId == CoachId).Count();
+
+            return noMessages > 0;
         }
 
         [HttpPost]
@@ -4000,6 +3996,7 @@ namespace NextLevelTrainingApi.Controllers
                 }
                 lead.Id = Guid.NewGuid();
                 lead.CreatedAt = DateTime.Now;
+                lead.Web = true;
                 _unitOfWork.LeadsRepository.InsertOne(lead);
             }
 
