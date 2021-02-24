@@ -264,7 +264,7 @@ namespace NextLevelTrainingApi.Controllers
             if (Location != null)
             {
                 var county = Location.Split(", ").First().Split(" ").Last();
-                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.COACH && x.State.Contains(county));
+                var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.COACH && x.State != null && x.State.Contains(county));
 
                 foreach (var coach in coaches)
                 {
@@ -293,13 +293,6 @@ namespace NextLevelTrainingApi.Controllers
         [Route("GetLeads/{Location}")]
         public ActionResult<List<Leads>> GetLeads(string Location)
         {
-            //var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
-
-            //if (user == null)
-            //{
-            //    return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
-            //}
-
             var leads = _unitOfWork.LeadsRepository.FilterBy(x => x.Location.ToLower().Contains(Location.ToLower()) && x.Web == true).ToList();
 
             return leads;
@@ -3230,7 +3223,8 @@ namespace NextLevelTrainingApi.Controllers
                     Accomplishment = x.Accomplishment,
                     Experiences = x.Experiences,
                     Lat = x.Lat,
-                    Lng = x.Lng
+                    Lng = x.Lng,
+                    CreatedAt = x.RegisterDate
                 }).ToList();
 
 
@@ -3387,7 +3381,8 @@ namespace NextLevelTrainingApi.Controllers
                     Lat = x.Lat,
                     Lng = x.Lng,
                     TravelMile = x.TravelMile,
-                    Experiences = x.Experiences
+                    Experiences = x.Experiences,
+                    CreatedAt = x.RegisterDate
                 }).ToList();
 
                 foreach (var item in users)
@@ -3977,9 +3972,27 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         lead.DaysOfWeek = new List<string> { ans.Answer };
                     }
-                    if (ans.Name == "Location")
+                    if (ans.Name == "county")
                     {
-                        lead.Location = ans.Answer;
+                        if (lead.Location != null)
+                        {
+                            lead.Location = $"{lead.Location} {ans.Answer}".Trim();
+                        }
+                        else
+                        {
+                            lead.Location = ans.Answer;
+                        }
+                    }
+                    if (ans.Name == "district")
+                    {
+                        if (lead.Location != null)
+                        {
+                            lead.Location = $"{ans.Answer} {lead.Location}".Trim();
+                        }
+                        else
+                        {
+                            lead.Location = ans.Answer;
+                        }
                     }
                     if (ans.Name == "MobileNo")
                     {
@@ -3998,6 +4011,21 @@ namespace NextLevelTrainingApi.Controllers
                 lead.CreatedAt = DateTime.Now;
                 lead.Web = true;
                 _unitOfWork.LeadsRepository.InsertOne(lead);
+
+                if (lead.Location != null)
+                {
+                    var county = lead.Location.Split(' ').Last();
+                    var coaches = _unitOfWork.UserRepository.FilterBy(x => x.Role.ToLower() == Constants.COACH && x.State.Contains(county));
+
+                    foreach (var coach in coaches)
+                    {
+                        try
+                        {
+                            await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {lead.Location}", "New Lead");
+                        }
+                        catch { }
+                    }
+                }
             }
 
 
@@ -4036,10 +4064,7 @@ namespace NextLevelTrainingApi.Controllers
                         player.State = address;
                         _unitOfWork.UserRepository.ReplaceOne(player);
                     }
-                    catch (Exception ex)
-                    {
-
-                    }
+                    catch { }
                 }
             }
 

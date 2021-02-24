@@ -60,6 +60,7 @@ namespace NextLevelTrainingApi.ViewModels
         public int Rate { get; set; }
         public bool Featured { get; set; }
         public string AverageBookingRating { get; set; }
+        public DateTime? CreatedAt { get; set; }
         public TravelMiles TravelMile { get; set; }
         public BankAccount BankAccount { get; set; }
         public List<HiddenPosts> HiddenPosts { get; set; }
