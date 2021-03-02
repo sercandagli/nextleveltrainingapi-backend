@@ -3908,17 +3908,18 @@ namespace NextLevelTrainingApi.Controllers
         }
 
         [HttpGet]
-        [Route("SendEmail/{{EmailID}}/{{UserId}}")]
-        public ActionResult<bool> SendEmail(string EmailID, Guid UserId)
+        [Route("SendEmail/{{EmailID}}/{{LeadEmailID}}")]
+        public ActionResult<bool> SendEmail(string EmailID, string LeadEmailID)
         {
-            var user = _unitOfWork.UserRepository.FindById(UserId);
+            var lead = _unitOfWork.LeadsRepository.FindOne(x => x.EmailID == LeadEmailID);
 
-            var values = new Dictionary<string, string>();
-            values.Add("FullName", user.FullName);
-            values.Add("Location", user.State);
-            values.Add("Phone", GetMaskedMobileNo(user.MobileNo));
-            values.Add("EmailID", GetMaskedEmail(user.EmailID));
-            values.Add("LatLng", $"{user.Lat},{user.Lng}");
+            var values = new Dictionary<string, string>
+            {
+                { "FullName", lead.FullName },
+                { "Location", lead.Location },
+                { "Phone", "**** ****" },
+                { "EmailID", GetMaskedEmail(lead.EmailID) }
+            };
             EmailHelper.SendEmail(EmailID, _emailSettings, "newlead", values);
 
             return true;
@@ -4022,8 +4023,19 @@ namespace NextLevelTrainingApi.Controllers
                         try
                         {
                             await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {lead.Location}", "New Lead");
+
+                            var values = new Dictionary<string, string>
+                            {
+                                { "FullName", lead.FullName },
+                                { "Location", lead.Location },
+                                { "Phone", lead.MobileNo != null ? GetMaskedMobileNo(lead.MobileNo) : "**** ****" },
+                                { "EmailID", GetMaskedEmail(lead.EmailID) }
+                            };
+                            EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead", values);
                         }
                         catch { }
+
+                        
                     }
                 }
             }

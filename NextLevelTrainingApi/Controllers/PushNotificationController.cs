@@ -23,8 +23,8 @@ namespace NextLevelTrainingApi.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly FCMSettings _fcmSettings;
-        public PushNotificationController(IUnitOfWork unitOfWork,
-            IOptions<FCMSettings> fcmSettings)
+
+        public PushNotificationController(IUnitOfWork unitOfWork, IOptions<FCMSettings> fcmSettings)
         {
             _unitOfWork = unitOfWork;
             _fcmSettings = fcmSettings.Value;
@@ -41,32 +41,13 @@ namespace NextLevelTrainingApi.Controllers
             var allUsers = _unitOfWork.UserRepository.AsQueryable().ToList();
             foreach (var user in allUsers.Where(x => x.Role.ToLower() == Constants.PLAYER))
             {
-
                 //training today?
-                Notification notification = new Notification();
-                notification.Id = Guid.NewGuid();
-                notification.Text = "Training Today?";
-                notification.CreatedDate = DateTime.Now;
-                notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
-                if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                {
-                    await AndriodPushNotification(user.DeviceToken, notification);
-                }
-                else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                {
-                    await ApplePushNotification(user.DeviceToken, notification);
-                }
-
+                await PushNotification(user, "Training Today?");
             }
 
             return Ok();
 
         }
-
-
-
-
 
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] SchedulePushNotificationViewModel vm)
@@ -82,6 +63,7 @@ namespace NextLevelTrainingApi.Controllers
             var coaches = allUsers.Where(x => x.Role.ToLower() == Constants.COACH).ToList();
 
 
+
             //24 hours after register
             var dayBefore = now.AddDays(-1);
             var playersWithAfterRegister = players.Where(x => x.RegisterDate.Date == dayBefore.Date).ToList();
@@ -93,24 +75,12 @@ namespace NextLevelTrainingApi.Controllers
             foreach (var id in playersWithBooking)
             {
                 var user = players.FirstOrDefault(x => x.Id == id);
-                Notification notification = new Notification();
-                notification.Id = Guid.NewGuid();
-                notification.Text = "Time to train ⚽ Book your first 1 on 1 session today 🏆";
-                notification.CreatedDate = DateTime.Now;
-                notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
-                if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                {
-                    await AndriodPushNotification(user.DeviceToken, notification);
-                }
-                else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                {
-                    await ApplePushNotification(user.DeviceToken, notification);
-                }
+                await PushNotification(user, "Time to train ⚽ Book your first 1 on 1 session today 🏆");
             }
 
 
-            ///3 days after registration
+
+            //3 days after registration
             dayBefore = now.AddDays(-3);
 
             playersWithAfterRegister = players.Where(x => x.RegisterDate.Date == dayBefore.Date).ToList();
@@ -123,21 +93,9 @@ namespace NextLevelTrainingApi.Controllers
             foreach (var id in playersWithBooking)
             {
                 var user = players.FirstOrDefault(x => x.Id == id);
-                Notification notification = new Notification();
-                notification.Id = Guid.NewGuid();
-                notification.Text = "Good players practise until they get it right. Great players practise until they never get it wrong  💪";
-                notification.CreatedDate = DateTime.Now;
-                notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
-                if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                {
-                    await AndriodPushNotification(user.DeviceToken, notification);
-                }
-                else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                {
-                    await ApplePushNotification(user.DeviceToken, notification);
-                }
+                await PushNotification(user, "Good players practise until they get it right. Great players practise until they never get it wrong  💪");
             }
+
 
 
             //bi weekly after registration
@@ -153,20 +111,7 @@ namespace NextLevelTrainingApi.Controllers
             foreach (var id in playersWithBooking)
             {
                 var user = players.FirstOrDefault(x => x.Id == id);
-                Notification notification = new Notification();
-                notification.Id = Guid.NewGuid();
-                notification.Text = "New coaches are in your area ⚽ Let’s take it to the next level! Book a session today !";
-                notification.CreatedDate = DateTime.Now;
-                notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
-                if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                {
-                    await AndriodPushNotification(user.DeviceToken, notification);
-                }
-                else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                {
-                    await ApplePushNotification(user.DeviceToken, notification);
-                }
+                await PushNotification(user, "New coaches are in your area ⚽ Let’s take it to the next level! Book a session today !");
             }
 
 
@@ -174,43 +119,20 @@ namespace NextLevelTrainingApi.Controllers
             //everyday notifications
             foreach (var user in players)
             {
-                Notification notification = new Notification();
-                notification.Id = Guid.NewGuid();
-                notification.Text = "To improve you must train as much as possible. Book a training session today!";
-                notification.CreatedDate = DateTime.Now;
-                notification.UserId = user.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
-                if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                {
-                    await AndriodPushNotification(user.DeviceToken, notification);
-                }
-                else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                {
-                    await ApplePushNotification(user.DeviceToken, notification);
-                }
+                await PushNotification(user, "To improve you must train as much as possible. Book a training session today!");
             }
+
+
 
             //begining of the month
             if (now.Day == 1)
             {
                 foreach (var user in players)
                 {
-                    Notification notification = new Notification();
-                    notification.Id = Guid.NewGuid();
-                    notification.Text = "New month, new goals - Time to smash it 💪";
-                    notification.CreatedDate = DateTime.Now;
-                    notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
-                    if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                    {
-                        await AndriodPushNotification(user.DeviceToken, notification);
-                    }
-                    else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                    {
-                        await ApplePushNotification(user.DeviceToken, notification);
-                    }
+                    await PushNotification(user, "New month, new goals - Time to smash it 💪");
                 }
             }
+
 
 
             //one day after session
@@ -233,25 +155,13 @@ namespace NextLevelTrainingApi.Controllers
                 if (hasEndedSession)
                 {
                     var user = _unitOfWork.UserRepository.FindById(booking.PlayerID);
-                    Notification notification = new Notification();
-                    notification.Id = Guid.NewGuid();
-                    notification.Text = "How was your Training? Leave your coach a review ⭐";
-                    notification.CreatedDate = DateTime.Now;
-                    notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
-                    if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                    {
-                        await AndriodPushNotification(user.DeviceToken, notification);
-                    }
-                    else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                    {
-                        await ApplePushNotification(user.DeviceToken, notification);
-                    }
+                    await PushNotification(user, "How was your Training? Leave your coach a review ⭐");
                 }
             }
 
-            //1 week after training
 
+
+            //1 week after training
             dayBefore = now.AddDays(-60);
 
             lastBookings = _unitOfWork.BookingRepository.FilterBy(x => x.SentDate > dayBefore);
@@ -271,20 +181,7 @@ namespace NextLevelTrainingApi.Controllers
                 if (hasEndedSession)
                 {
                     var user = _unitOfWork.UserRepository.FindById(booking.PlayerID);
-                    Notification notification = new Notification();
-                    notification.Id = Guid.NewGuid();
-                    notification.Text = "Ready for your next training session? ⚽";
-                    notification.CreatedDate = DateTime.Now;
-                    notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
-                    if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                    {
-                        await AndriodPushNotification(user.DeviceToken, notification);
-                    }
-                    else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                    {
-                        await ApplePushNotification(user.DeviceToken, notification);
-                    }
+                    await PushNotification(user, "Ready for your next training session? ⚽");
                 }
             }
 
@@ -309,21 +206,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 if (hasEndedTraining)
                 {
-
-                    Notification notification = new Notification();
-                    notification.Id = Guid.NewGuid();
-                    notification.Text = "How was your first session? Leave us a review on the app store ⭐";
-                    notification.CreatedDate = DateTime.Now;
-                    notification.UserId = coach.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
-                    if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                    {
-                        await AndriodPushNotification(coach.DeviceToken, notification);
-                    }
-                    else if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                    {
-                        await ApplePushNotification(coach.DeviceToken, notification);
-                    }
+                    await PushNotification(coach, "How was your first session? Leave us a review on the app store ⭐");
                 }
             }
 
@@ -333,22 +216,7 @@ namespace NextLevelTrainingApi.Controllers
             {
                 foreach (var coach in coaches)
                 {
-
-                    Notification notification = new Notification();
-                    notification.Id = Guid.NewGuid();
-                    notification.Text = "Set your availability and training locations for the week. Improve your profile to receive more bookings";
-                    notification.CreatedDate = DateTime.Now;
-                    notification.UserId = coach.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
-                    if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                    {
-                        await AndriodPushNotification(coach.DeviceToken, notification);
-                    }
-                    else if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                    {
-                        await ApplePushNotification(coach.DeviceToken, notification);
-
-                    }
+                    await PushNotification(coach, "Set your availability and training locations for the week. Improve your profile to receive more bookings");
                 }
             }
 
@@ -356,21 +224,7 @@ namespace NextLevelTrainingApi.Controllers
             var weeklyCoaches = coaches.Where(x => x.RegisterDate.Date == signUpLimit.Date).ToList();
             foreach (var coach in weeklyCoaches)
             {
-                Notification notification = new Notification();
-                notification.Id = Guid.NewGuid();
-                notification.Text = "New players are in your area ⚽";
-                notification.CreatedDate = DateTime.Now;
-                notification.UserId = coach.Id;
-                _unitOfWork.NotificationRepository.InsertOne(notification);
-                if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                {
-                    await AndriodPushNotification(coach.DeviceToken, notification);
-                }
-                else if (coach.DeviceType != null && Convert.ToString(coach.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                {
-                    await ApplePushNotification(coach.DeviceToken, notification);
-
-                }
+                await PushNotification(coach, "New players are in your area ⚽");
             }
 
 
@@ -379,21 +233,7 @@ namespace NextLevelTrainingApi.Controllers
             {
                 foreach (var user in allUsers)
                 {
-                    Notification notification = new Notification();
-                    notification.Id = Guid.NewGuid();
-                    notification.Text = "Post about training";
-                    notification.CreatedDate = DateTime.Now;
-                    notification.UserId = user.Id;
-                    _unitOfWork.NotificationRepository.InsertOne(notification);
-                    if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
-                    {
-                        await AndriodPushNotification(user.DeviceToken, notification);
-                    }
-                    else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
-                    {
-                        await ApplePushNotification(user.DeviceToken, notification);
-
-                    }
+                    await PushNotification(user, "Post about training");
                 }
             }
 
@@ -433,12 +273,16 @@ namespace NextLevelTrainingApi.Controllers
             }
         }
 
-        //[HttpGet]
-        //[Route("AppleNotificaion")]
         private async Task ApplePushNotification(string deviceToken, Notification notification)
         {
             HttpClient httpClient = new HttpClient();
-            ApnSettings apnSettings = new ApnSettings() { AppBundleIdentifier = "com.nextleveltraining", P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S", P8PrivateKeyId = "FQ6ZXC7U8L", ServerType = ApnServerType.Development, TeamId = "Y77A2C426U" };
+            ApnSettings apnSettings = new ApnSettings() {
+                AppBundleIdentifier = "com.nextleveltraining",
+                P8PrivateKey = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgZ1ugPXE4Hhh3L1embZmjfUdYBij8HbsrolZnzfR49X6gCgYIKoZIzj0DAQehRANCAARbCwj0VnMCOzw/Tyx4GsS4W+QN4LLCe6RRgIR/LZBJQqKi0q4XWg/p4Qa6JQAdKOZziemK4/dJZaqH/EFijM1S",
+                P8PrivateKeyId = "FQ6ZXC7U8L",
+                ServerType = ApnServerType.Production,
+                TeamId = "Y77A2C426U"
+            };
             AppleNotification appleNotification = new AppleNotification();
             appleNotification.Aps.AlertBody = notification.Text;
             appleNotification.Notification = JsonConvert.SerializeObject(notification);
@@ -446,12 +290,35 @@ namespace NextLevelTrainingApi.Controllers
             var result = await apn.SendAsync(appleNotification, deviceToken);
             if (!result.IsSuccess)
             {
-                ErrorLog error = new ErrorLog();
-                error.Id = Guid.NewGuid();
-                error.Exception = JsonConvert.SerializeObject(result);
-                error.StackTrace = "Apple Push Notification: " + notification.Text + " DeviceToken:" + deviceToken;
-                error.CreatedDate = DateTime.Now;
+                ErrorLog error = new ErrorLog
+                {
+                    Id = Guid.NewGuid(),
+                    Exception = JsonConvert.SerializeObject(result),
+                    StackTrace = "Apple Push Notification: " + notification.Text + " DeviceToken:" + deviceToken,
+                    CreatedDate = DateTime.Now
+                };
                 _unitOfWork.ErrorLogRepository.InsertOne(error);
+            }
+        }
+
+        private async Task PushNotification(Users user, string text)
+        {
+            Notification notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                Text = text,
+                CreatedDate = DateTime.Now,
+                UserId = user.Id
+            };
+            _unitOfWork.NotificationRepository.InsertOne(notification);
+
+            if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.ANDRIOD_DEVICE)
+            {
+                await AndriodPushNotification(user.DeviceToken, notification);
+            }
+            else if (user.DeviceType != null && Convert.ToString(user.DeviceType).ToLower() == Constants.APPLE_DEVICE)
+            {
+                await ApplePushNotification(user.DeviceToken, notification);
             }
         }
     }
