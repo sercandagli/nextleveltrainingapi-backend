@@ -4029,7 +4029,8 @@ namespace NextLevelTrainingApi.Controllers
                                 { "FullName", lead.FullName },
                                 { "Location", lead.Location },
                                 { "Phone", lead.MobileNo != null ? GetMaskedMobileNo(lead.MobileNo) : "**** ****" },
-                                { "EmailID", GetMaskedEmail(lead.EmailID) }
+                                { "EmailID", GetMaskedEmail(lead.EmailID) },
+                                { "LatLng", $"{coach.Lat},{coach.Lng}" }
                             };
                             EmailHelper.SendEmail(coach.EmailID, _emailSettings, "newlead", values);
                         }
