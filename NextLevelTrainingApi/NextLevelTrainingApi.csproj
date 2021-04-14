@@ -25,6 +25,7 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="5.5.1" />
     <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.7.1" />
+    <PackageReference Include="Stripe.net" Version="39.43.0" />
   </ItemGroup>
 
   <ItemGroup>

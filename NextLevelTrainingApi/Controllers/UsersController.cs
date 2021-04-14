@@ -28,6 +28,7 @@ using System.Drawing;
 using System.Text.RegularExpressions;
 using CorePush.Google;
 using CorePush.Apple;
+using Stripe;
 
 namespace NextLevelTrainingApi.Controllers
 {
@@ -268,7 +269,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 foreach (var coach in coaches)
                 {
-                    await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {Location}", "New Lead");
+                    await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {Location}. Earn up to £{input.MaximumPrice ?? "20"} per hour", "New Lead");
 
                     try
                     {
@@ -452,7 +453,26 @@ namespace NextLevelTrainingApi.Controllers
                 return Unauthorized(new ErrorViewModel() { errors = new Error() { error = new string[] { "User not found." } } });
             }
 
-            await PushNotification(user, input.Message, input.Title ?? "Test Notification");
+            await PushNotification(user, input.Message, input.Title ?? "Next Level");
+
+            return true;
+        }
+
+        [HttpPost]
+        [Route("SendMassNotification")]
+        public async Task<ActionResult<bool>> SendMassNotification(SendNotificationViewModel input)
+        {
+            var users = _unitOfWork.UserRepository.FilterBy(x => x.DeviceToken != null);
+
+            foreach (var user in users)
+            {
+                try
+                {
+                    await PushNotification(user, input.Message, input.Title ?? "Next Level");
+                }
+                catch { }
+            }
+
 
             return true;
         }
@@ -765,24 +785,26 @@ namespace NextLevelTrainingApi.Controllers
 
             string baseUrl = _jwtAppSettings.AppBaseURL;
 
-            var userPosts = (from post in _unitOfWork.PostRepository.AsQueryable()
-                             where !hiddenPostIds.Contains(post.Id)
+            var userPosts = (
+                from post in _unitOfWork.PostRepository.AsQueryable()
+                where !hiddenPostIds.Contains(post.Id)
 
-                             //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
-                             select new PostDataViewModel()
-                             {
-                                 Body = post.Body,
-                                 CreatedDate = post.CreatedDate,
-                                 Header = post.Header,
-                                 Id = post.Id,
-                                 IsVerified = post.IsVerified,
-                                 Likes = post.Likes,
-                                 MediaURL = post.MediaURL,
-                                 NumberOfLikes = post.NumberOfLikes,
-                                 UserId = post.UserId,
-                                 //CreatedBy = usr.FullName,
-                                 //ProfileImage = (usr.ProfileImage.Contains("http://") || usr.ProfileImage.Contains("https:/")) ? usr.ProfileImage : baseUrl + usr.ProfileImage
-                             }).ToList();
+                //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
+                select new PostDataViewModel()
+                {
+                    Body = post.Body,
+                    CreatedDate = post.CreatedDate,
+                    Header = post.Header,
+                    Id = post.Id,
+                    IsVerified = post.IsVerified,
+                    Likes = post.Likes,
+                    MediaURL = post.MediaURL,
+                    NumberOfLikes = post.NumberOfLikes,
+                    UserId = post.UserId,
+                    //CreatedBy = usr.FullName,
+                    //ProfileImage = (usr.ProfileImage.Contains("http://") || usr.ProfileImage.Contains("https:/")) ? usr.ProfileImage : baseUrl + usr.ProfileImage
+                }
+            ).ToList();
 
             foreach (var item in userPosts)
             {
@@ -851,12 +873,12 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         //string path = item.MediaURL.Replace(baseUrl + "/", "");
                         string fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot" + item.MediaURL);
-                        System.Drawing.Image img = System.Drawing.Image.FromFile(fullPath);
+                        Image img = Image.FromFile(fullPath);
                         item.Height = img.Height;
                         item.Width = img.Width;
                         item.MediaURL = baseUrl + item.MediaURL;
                     }
-                    catch (Exception ex)
+                    catch
                     {
                         item.MediaURL = baseUrl + item.MediaURL;
                     }
@@ -1772,7 +1794,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpPost]
         [Route("SaveBankAccount")]
-        public ActionResult<BankAccount> SaveBankAccount(BankAccount bank)
+        public ActionResult<DAL.Entities.BankAccount> SaveBankAccount(DAL.Entities.BankAccount bank)
         {
 
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
@@ -1789,7 +1811,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpGet]
         [Route("GetBankAccount")]
-        public ActionResult<BankAccount> GetBankAccount()
+        public ActionResult<DAL.Entities.BankAccount> GetBankAccount()
         {
 
             var user = _unitOfWork.UserRepository.FindById(_userContext.UserID);
@@ -1953,7 +1975,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
-                var review = new Review()
+                var review = new DAL.Entities.Review()
                 {
                     Id = Guid.NewGuid(),
                     PlayerId = reviewVM.PlayerId,
@@ -1973,7 +1995,7 @@ namespace NextLevelTrainingApi.Controllers
 
         [HttpGet]
         [Route("DeleteReview/{Id}")]
-        public ActionResult<Review> DeleteReview(Guid Id)
+        public ActionResult<DAL.Entities.Review> DeleteReview(Guid Id)
         {
             var coach = _unitOfWork.UserRepository.FilterBy(x => x.Id == _userContext.UserID).SingleOrDefault();
             if (coach == null)
@@ -3889,7 +3911,7 @@ namespace NextLevelTrainingApi.Controllers
             }
             else
             {
-                var review = new Review()
+                var review = new DAL.Entities.Review()
                 {
                     Id = Guid.NewGuid(),
                     PlayerId = reviewVM.PlayerId,
@@ -3947,6 +3969,7 @@ namespace NextLevelTrainingApi.Controllers
             foreach (var content in res.Content)
             {
                 var lead = new Leads();
+                var MaximumPrice = "20";
                 foreach (var ans in content.Answers.Values)
                 {
                     if (ans.Name == "Experience")
@@ -4007,6 +4030,10 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         lead.EmailID = ans.Answer;
                     }
+                    if (ans.Name.ToLower() == "maximumprice")
+                    {
+                        MaximumPrice = ans.Answer;
+                    }
                 }
                 lead.Id = Guid.NewGuid();
                 lead.CreatedAt = DateTime.Now;
@@ -4022,7 +4049,7 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         try
                         {
-                            await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {lead.Location}", "New Lead");
+                            await PushNotification(coach, $"{lead.FullName} is looking for Football Coaches in {lead.Location}. Earn up to £{MaximumPrice} per hour", "New Lead");
 
                             var values = new Dictionary<string, string>
                             {
@@ -4084,6 +4111,33 @@ namespace NextLevelTrainingApi.Controllers
             return players;
         }
 
+
+        [HttpPost]
+        [Route("PayWithStripe")]
+        public ActionResult<PaymentIntentViewModel> PayWithStripe(PayWithStripeViewModel data)
+        {
+            StripeConfiguration.ApiKey = "sk_live_MGop5tSgyzbBJyM94eMckWK800jIu8uQQb";
+
+            var options = new PaymentIntentCreateOptions
+            {
+                Amount = data.Amount,
+                Currency = data.Currency,
+                PaymentMethodTypes = new List<string> { "card" },
+                StatementDescriptor = data.StatementDescriptor,
+            };
+
+            var service = new PaymentIntentService();
+            var intent = service.Create(options);
+
+            return new PaymentIntentViewModel
+            {
+                Id = intent.Id,
+                Amount = intent.Amount,
+                ClientSecret = intent.ClientSecret,
+                Status = intent.Status,
+            };
+        }
+
         private async Task<string> GetAddress(string postCode)
         {
             var apiKey = "ak_kgpgg5sceGe2S9cpVSSeU9UJo8YrI";
@@ -4116,18 +4170,17 @@ namespace NextLevelTrainingApi.Controllers
                     Icon = !string.IsNullOrEmpty(notification.Image) ? notification.Image : "https://www.nextlevelfootballacademy.co.uk/wp-content/uploads/2019/06/logo.png"
                 }
             };
-            using(var httpClient = new HttpClient())
-            {
-                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://fcm.googleapis.com/fcm/send");
-                httpRequest.Headers.Add("Authorization", $"key = {_fcmSettings.ServerKey}");
-                httpRequest.Headers.Add("Sender", $"id = {_fcmSettings.SenderId}");
-                var http = new HttpClient();
-                var json = JsonConvert.SerializeObject(googleNotification);
-                httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
-                using var response = await httpClient.SendAsync(httpRequest);
-                //response.EnsureSuccessStatusCode();
-                var responseString = await response.Content.ReadAsStringAsync();
-            }            
+
+            using var httpClient = new HttpClient();
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "https://fcm.googleapis.com/fcm/send");
+            httpRequest.Headers.Add("Authorization", $"key = {_fcmSettings.ServerKey}");
+            httpRequest.Headers.Add("Sender", $"id = {_fcmSettings.SenderId}");
+            var http = new HttpClient();
+            var json = JsonConvert.SerializeObject(googleNotification);
+            httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var response = await httpClient.SendAsync(httpRequest);
+            //response.EnsureSuccessStatusCode();
+            var responseString = await response.Content.ReadAsStringAsync();
         }
 
         //[HttpGet]

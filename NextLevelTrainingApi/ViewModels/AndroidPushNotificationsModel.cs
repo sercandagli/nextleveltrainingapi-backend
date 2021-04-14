@@ -23,7 +23,7 @@ namespace NextLevelTrainingApi.ViewModels
     {
         [JsonProperty("title")]
         public string Title { get; set; }
-        [JsonProperty("text")]
+        [JsonProperty("body")]
         public string Text { get; set; }
         [JsonProperty("icon")]
         public string Icon { get; set; }

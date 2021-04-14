@@ -123,6 +123,51 @@ namespace NextLevelTrainingApi.Controllers
             }
 
 
+            //every 2 days
+            if (now.Day % 2 == 0)
+            {
+                foreach (var coach in coaches)
+                {
+                    await PushNotification(coach, "Paying Players in your area are looking for extra training from a football coach. Contact them for now for £1.99.");
+                }
+
+                foreach (var coach in coaches)
+                {
+                    await PushNotification(coach, "Post your training videos to attract more paying customers.");
+                }
+
+                foreach (var coach in coaches)
+                {
+                    await PushNotification(coach, "Make money coaching! Find a player today");
+                }
+
+                foreach (var player in players)
+                {
+                    await PushNotification(player, "Individual training improves the parts of your game team training cannot. Contact a 1-2-1 coach today and improve your game.");
+                }
+
+                foreach (var player in players)
+                {
+                    await PushNotification(player, "Find a local football coach");
+                }
+            }
+
+
+            //every 3 days
+            if (now.Day % 3 == 0)
+            {
+                foreach (var player in players)
+                {
+                    await PushNotification(player, "Contact a football coach and train harder! Take your game to the next level");
+                }
+
+                foreach (var player in players)
+                {
+                    await PushNotification(player, "Get training ! Find a individual football coach");
+                }
+            }
+
+
 
             //begining of the month
             if (now.Day == 1)
