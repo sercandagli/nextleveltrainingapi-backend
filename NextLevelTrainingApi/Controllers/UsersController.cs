@@ -4114,9 +4114,9 @@ namespace NextLevelTrainingApi.Controllers
         [Route("PayWithStripe")]
         public ActionResult<PaymentIntentViewModel> PayWithStripe(PayWithStripeViewModel data)
         {
-            //StripeConfiguration.ApiKey = "sk_live_MGop5tSgyzbBJyM94eMckWK800jIu8uQQb"; live key
+            StripeConfiguration.ApiKey = "sk_live_MGop5tSgyzbBJyM94eMckWK800jIu8uQQb"; //live key
 
-            StripeConfiguration.ApiKey = "sk_test_vQLOzDb6M1ej8M00Y6hOPJd900HXn9FeWV"; //test key
+            //StripeConfiguration.ApiKey = "sk_test_vQLOzDb6M1ej8M00Y6hOPJd900HXn9FeWV"; //test key
 
             var options = new PaymentIntentCreateOptions
             {
