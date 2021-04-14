@@ -4110,20 +4110,22 @@ namespace NextLevelTrainingApi.Controllers
 
             return players;
         }
-
-
         [HttpPost]
         [Route("PayWithStripe")]
         public ActionResult<PaymentIntentViewModel> PayWithStripe(PayWithStripeViewModel data)
         {
-            StripeConfiguration.ApiKey = "sk_live_MGop5tSgyzbBJyM94eMckWK800jIu8uQQb";
+            //StripeConfiguration.ApiKey = "sk_live_MGop5tSgyzbBJyM94eMckWK800jIu8uQQb"; live key
+
+            StripeConfiguration.ApiKey = "pk_test_x7ILp8ZkceqUqaIxDWAiBsLi00Fz2vPqrZ"; //test key
 
             var options = new PaymentIntentCreateOptions
             {
                 Amount = data.Amount,
                 Currency = data.Currency,
                 PaymentMethodTypes = new List<string> { "card" },
+                PaymentMethod = data.PaymentMethodId,
                 StatementDescriptor = data.StatementDescriptor,
+                ConfirmationMethod = "automatic",
             };
 
             var service = new PaymentIntentService();
@@ -4137,7 +4139,6 @@ namespace NextLevelTrainingApi.Controllers
                 Status = intent.Status,
             };
         }
-
         private async Task<string> GetAddress(string postCode)
         {
             var apiKey = "ak_kgpgg5sceGe2S9cpVSSeU9UJo8YrI";
