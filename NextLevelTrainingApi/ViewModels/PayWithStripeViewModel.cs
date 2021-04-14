@@ -15,5 +15,6 @@ namespace NextLevelTrainingApi.ViewModels
         public string PaymentMethodId { get; set; }
 
         public string StatementDescriptor { get; set; }
+
     }
 }
