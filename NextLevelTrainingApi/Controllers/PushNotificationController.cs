@@ -128,7 +128,7 @@ namespace NextLevelTrainingApi.Controllers
             {
                 foreach (var coach in coaches)
                 {
-                    await PushNotification(coach, "Paying Players in your area are looking for extra training from a football coach. Contact them for now for £1.99.");
+                    await PushNotification(coach, "Paying Players in your area are looking for extra training from a football coach. Contact them for now for £2.50");
                 }
 
                 foreach (var coach in coaches)
