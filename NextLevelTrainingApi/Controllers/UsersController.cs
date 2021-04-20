@@ -331,6 +331,7 @@ namespace NextLevelTrainingApi.Controllers
                 Age = lead.Age,
                 CoachingType = lead.CoachingType,
                 Days = lead.Days,
+                MaximumPrice = lead.MaximumPrice,
                 CoachingTime = lead.CoachingTime,
                 DaysOfWeek = lead.DaysOfWeek,
                 CreatedAt = lead.CreatedAt,
@@ -4022,7 +4023,7 @@ namespace NextLevelTrainingApi.Controllers
                     }
                     if (ans.Name == "MobileNo")
                     {
-                        lead.MobileNo = ans.PrettyFormat;
+                        lead.MobileNo = ans.Answer;
                     }
                     if (ans.Name == "FullName")
                     {

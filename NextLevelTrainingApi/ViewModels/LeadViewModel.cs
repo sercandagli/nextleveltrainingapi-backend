@@ -19,6 +19,7 @@ namespace NextLevelTrainingApi.ViewModels
         public List<string> Days { get; set; }
         public List<string> CoachingTime { get; set; }
         public List<string> DaysOfWeek { get; set; }
+        public string MaximumPrice { get; set; }
 
         public Guid? UserId { get; set; }
 
