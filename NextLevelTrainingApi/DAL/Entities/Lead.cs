@@ -29,6 +29,7 @@ namespace NextLevelTrainingApi.DAL.Entities
 
         public string Experience { get; set; }
         public string Age { get; set; }
+        public string MaximumPrice { get; set; }
         public List<string> CoachingType { get; set; }
         public List<string> Days { get; set; }
         public List<string> CoachingTime { get; set; }

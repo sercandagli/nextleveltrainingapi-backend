@@ -138,7 +138,7 @@ namespace NextLevelTrainingApi.Controllers
 
                 foreach (var coach in coaches)
                 {
-                    await PushNotification(coach, "Make money coaching! Find a player today");
+                    await PushNotification(coach, "Earn through coaching! Find a player today");
                 }
 
                 foreach (var player in players)

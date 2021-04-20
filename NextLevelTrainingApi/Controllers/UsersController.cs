@@ -237,6 +237,7 @@ namespace NextLevelTrainingApi.Controllers
                 lead.CoachingTime = input.CoachingTime;
                 lead.DaysOfWeek = input.DaysOfWeek;
                 lead.Location = input.Location;
+                lead.MaximumPrice = input.MaximumPrice;
 
                 _unitOfWork.LeadsRepository.ReplaceOne(lead);
             }
@@ -256,6 +257,7 @@ namespace NextLevelTrainingApi.Controllers
                     DaysOfWeek = input.DaysOfWeek,
                     CreatedAt = DateTime.Now,
                     Location = input.Location,
+                    MaximumPrice = input.MaximumPrice,
                     UserId = user.Id
                 };
                 _unitOfWork.LeadsRepository.InsertOne(lead);
@@ -4033,6 +4035,7 @@ namespace NextLevelTrainingApi.Controllers
                     if (ans.Name.ToLower() == "maximumprice")
                     {
                         MaximumPrice = ans.Answer;
+                        lead.MaximumPrice = ans.Answer;
                     }
                 }
                 lead.Id = Guid.NewGuid();
