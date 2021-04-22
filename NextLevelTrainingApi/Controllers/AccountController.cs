@@ -16,6 +16,7 @@ using NextLevelTrainingApi.DAL.Interfaces;
 using NextLevelTrainingApi.Helper;
 using NextLevelTrainingApi.Models;
 using NextLevelTrainingApi.ViewModels;
+
 namespace NextLevelTrainingApi.Controllers
 {
     [Route("api/[controller]")]
@@ -75,6 +76,109 @@ namespace NextLevelTrainingApi.Controllers
 
             return user;
         }
+
+
+        [HttpGet]
+        [Route("DeleteAccount/{email}")]
+        public ActionResult<bool> DeleteAccount(string email)
+        {
+            Users user = _unitOfWork.UserRepository.FindOne(x => x.EmailID.ToLower() == email.ToLower());
+            if (user == null)
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Account not found." } } });
+            }
+
+            try
+            {
+                _unitOfWork.LeadsRepository.DeleteMany(x => x.UserId == user.Id);
+            }
+            catch { }
+
+            try
+            {
+                _unitOfWork.ResponsesRepository.DeleteMany(x => x.CoachId == user.Id);
+            }
+            catch { }
+
+            try
+            {
+                _unitOfWork.PostRepository.DeleteMany(x => x.UserId == user.Id);
+            }
+            catch { }
+
+            try
+            {
+                _unitOfWork.CreditHistoryRepository.DeleteMany(x => x.UserId == user.Id);
+            }
+            catch { }
+
+            try
+            {
+                if (user.Role.ToLower() == Constants.COACH)
+                {
+                    _unitOfWork.BookingRepository.DeleteMany(x => x.CoachID == user.Id);
+                }
+                else
+                {
+                    _unitOfWork.BookingRepository.DeleteMany(x => x.PlayerID == user.Id);
+                }
+            }
+            catch { }
+
+            try
+            {
+                _unitOfWork.MessageRepository.DeleteMany(x => x.SenderId == user.Id || x.ReceiverId == user.Id);
+            }
+            catch { }
+
+            try
+            {
+                _unitOfWork.NotificationRepository.DeleteMany(x => x.UserId == user.Id);
+            }
+            catch { }
+
+            _unitOfWork.UserRepository.DeleteById(user.Id);
+
+            return true;
+        }
+
+
+        [HttpGet]
+        [Route("SendVerificationEmail/{email}")]
+        public ActionResult<string> SendVerificationEmail(string email)
+        {
+            Users user = _unitOfWork.UserRepository.FindOne(x => x.EmailID.ToLower() == email.ToLower());
+            if (user == null)
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "EmailID not found." } } });
+            }
+
+            var token = GenerateToken(user);
+
+            return token;
+        }
+
+        [HttpGet]
+        [Route("VerifyEmail/{token}")]
+        public ActionResult<bool> VerifyEmail(string token)
+        {
+            try
+            {
+                var email = GetEmailFromToken(token);
+
+                Users user = _unitOfWork.UserRepository.FindOne(x => x.EmailID.ToLower() == email.ToLower());
+
+                user.EmailVerified = true;
+                _unitOfWork.UserRepository.ReplaceOne(user);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { ex.Message } } });
+            }
+        }
+
 
         [HttpGet]
         [Route("GetUserByEmail/{email}")]
@@ -405,6 +509,20 @@ namespace NextLevelTrainingApi.Controllers
                 random = random + sc.ElementAt(sz);
             }
             return random;
+        }
+
+        private string GetEmailFromToken(string token)
+        {
+            TokenValidationParameters validationParameters = new TokenValidationParameters
+            {
+                ValidateLifetime = true,
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_jwtAppSettings.Secret)),
+            };
+            ClaimsPrincipal principal = new JwtSecurityTokenHandler().ValidateToken(token, validationParameters, out _);
+
+            return principal?.FindFirst(ClaimTypes.Email)?.Value;
         }
     }
 }

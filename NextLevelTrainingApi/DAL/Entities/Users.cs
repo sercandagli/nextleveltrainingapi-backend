@@ -32,6 +32,7 @@ namespace NextLevelTrainingApi.DAL.Entities
         public string Address { get; set; }
         public string State { get; set; }
 
+        public bool EmailVerified { get; set; }
         public DateTime RegisterDate { get; set; }
 
         public string EmailID { get; set; }
