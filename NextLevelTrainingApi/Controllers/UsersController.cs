@@ -3382,7 +3382,7 @@ namespace NextLevelTrainingApi.Controllers
             else
             {
                 string postSearch = Regex.Replace(Convert.ToString(post.Search).ToLower().Trim(), @"\s", "");
-                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.Id != _userContext.UserID && (x.FullName.ToLower().Contains(post.Search.ToLower()) || x.PostCode.ToLower().Contains(postSearch))).Select(x => new UserDataViewModel()
+                var users = _unitOfWork.UserRepository.AsQueryable().Where(x => x.Id != _userContext.UserID && (x.FullName.ToLower().Contains(post.Search.ToLower()) || x.State.ToLower().Contains(postSearch) || x.PostCode.ToLower().Contains(postSearch))).Select(x => new UserDataViewModel()
                 {
                     Id = x.Id,
                     Role = x.Role,
