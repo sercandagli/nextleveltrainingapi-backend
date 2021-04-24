@@ -790,7 +790,7 @@ namespace NextLevelTrainingApi.Controllers
 
             var userPosts = (
                 from post in _unitOfWork.PostRepository.AsQueryable()
-                where !hiddenPostIds.Contains(post.Id)
+                //where !hiddenPostIds.Contains(post.Id)
 
                 //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
                 select new PostDataViewModel()
@@ -3938,11 +3938,13 @@ namespace NextLevelTrainingApi.Controllers
         {
             var lead = _unitOfWork.LeadsRepository.FindOne(x => x.EmailID == LeadEmailID);
 
+            var phone = lead.MobileNo.Substring(0,3);
+
             var values = new Dictionary<string, string>
             {
                 { "FullName", lead.FullName },
                 { "Location", lead.Location },
-                { "Phone", "**** ****" },
+                { "Phone", phone+"****" },
                 { "EmailID", GetMaskedEmail(lead.EmailID) }
             };
             EmailHelper.SendEmail(EmailID, _emailSettings, "newlead", values);
