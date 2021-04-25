@@ -4027,8 +4027,6 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         lead.MobileNo = ans.Answer;
                     }
-
-
                     if (ans.Name == "FullName")
                     {
                         lead.FullName = ans.PrettyFormat;
