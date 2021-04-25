@@ -790,7 +790,7 @@ namespace NextLevelTrainingApi.Controllers
 
             var userPosts = (
                 from post in _unitOfWork.PostRepository.AsQueryable()
-                //where !hiddenPostIds.Contains(post.Id)
+                where !hiddenPostIds.Contains(post.Id)
 
                 //join usr in _unitOfWork.UserRepository.AsQueryable() on post.UserId equals usr.Id
                 select new PostDataViewModel()
@@ -4023,7 +4023,7 @@ namespace NextLevelTrainingApi.Controllers
                             lead.Location = ans.Answer;
                         }
                     }
-                    if (ans.Name == "MobileNo")
+                    if (ans.Name.ToLower() == "mobileno")
                     {
                         lead.MobileNo = ans.Answer;
                     }
@@ -4035,7 +4035,7 @@ namespace NextLevelTrainingApi.Controllers
                     {
                         lead.EmailID = ans.Answer;
                     }
-                    if (ans.Name.ToLower() == "maximumprice")
+                    if (ans.Name.ToLower() == "maximumrice")
                     {
                         MaximumPrice = ans.Answer;
                         lead.MaximumPrice = ans.Answer;
