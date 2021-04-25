@@ -197,7 +197,7 @@ namespace NextLevelTrainingApi.Controllers
 
             if (user == null)
             {
-                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "Invalid credentials." } } });
+                return BadRequest(new ErrorViewModel() { errors = new Error() { error = new string[] { "User with these credentials doesn't exist." } } });
             }
             if (!string.IsNullOrEmpty(userVM.DeviceToken) && !string.IsNullOrEmpty(userVM.DeviceType))
             {
