@@ -2144,15 +2144,15 @@ namespace NextLevelTrainingApi.Controllers
         {
             var noMessages = _unitOfWork.MessageRepository.FilterBy(x => x.SenderId == messageVM.SenderId && x.ReceiverId == messageVM.ReceiverId).Count();
 
-            if (noMessages == 0)
-            {
-                var user = _unitOfWork.UserRepository.FindById(messageVM.SenderId);
-                if (user.Credits > 0)
-                {
-                    user.Credits -= 1;
-                    _unitOfWork.UserRepository.ReplaceOne(user);
-                }
-            }
+            //if (noMessages == 0)
+            //{
+            //    var user = _unitOfWork.UserRepository.FindById(messageVM.SenderId);
+            //    if (user.Credits > 0)
+            //    {
+            //        user.Credits -= 1;
+            //        _unitOfWork.UserRepository.ReplaceOne(user);
+            //    }
+            //}
 
             var message = new Message()
             {
